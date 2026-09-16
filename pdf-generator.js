@@ -76,8 +76,6 @@ function generateQuotePDF(data) {
     const borderGray = [200, 200, 200];
     const black = [0, 0, 0];
 
-    let y = margin;
-
     // Helper functions
     function setFont(style = 'normal', size = 10) {
         doc.setFontSize(size);
@@ -91,22 +89,9 @@ function generateQuotePDF(data) {
         doc.setTextColor(rgb[0], rgb[1], rgb[2]);
     }
 
-    function checkPageBreak(neededHeight = 20) {
-        if (y + neededHeight > pageHeight - 20) {
-            doc.addPage();
-            y = margin + 15; // Space for header on new page
-            drawHeader(false);
-        }
-    }
-
-    function fmtMoney(amt) {
-        if (isNaN(amt)) return '0.00';
-        return amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    // ================= HEADER =================
-    function drawHeader(isFirstPage = true) {
-        let curY = isFirstPage ? margin : margin;
+    // Header drawing function - returns the Y position where page content should start
+    function drawHeader() {
+        const curY = margin;
 
         // Logo
         if (stda_logo_base64) {
@@ -120,29 +105,39 @@ function generateQuotePDF(data) {
         // Company Name & Subtitle
         setFont('bold', 14);
         setColor(navy);
-        doc.text('SensoTech Design And Automation', margin + 18, curY + 5);
+        doc.text('SensoTech Design And Automation', margin + 18, curY + 4.5);
 
         setFont('italic', 9);
         setColor([100, 100, 100]);
-        doc.text('Excellence in Automation solutions', margin + 18, curY + 10);
+        doc.text('Excellence in Automation solutions', margin + 18, curY + 9.5);
 
         // Address line
-        setFont('normal', 8);
+        setFont('normal', 7.5);
         setColor(darkGray);
         const addressLine = 'No 20 Suprabathnagara, Karihobanahalli, Thigalarapalya Main Road, Peenya Industrial Area Bengaluru, Karnataka 560058';
-        doc.text(addressLine, margin, curY + 18);
+        doc.text(addressLine, margin, curY + 15.5);
 
         // Thin separator line
         doc.setDrawColor(navy[0], navy[1], navy[2]);
-        doc.setLineWidth(0.5);
-        doc.line(margin, curY + 21, pageWidth - margin, curY + 21);
+        doc.setLineWidth(0.6);
+        doc.line(margin, curY + 18, pageWidth - margin, curY + 18);
 
-        if (isFirstPage) {
-            y = curY + 28;
+        return curY + 25; // 39mm: clean start position for page content
+    }
+
+    let y = drawHeader();
+
+    function checkPageBreak(neededHeight = 15) {
+        if (y + neededHeight > pageHeight - 20) {
+            doc.addPage();
+            y = drawHeader();
         }
     }
 
-    drawHeader(true);
+    function fmtMoney(amt) {
+        if (isNaN(amt)) return '0.00';
+        return amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
     // ================= DOCUMENT TITLE =================
     setFont('bold', 14);
@@ -266,7 +261,7 @@ function generateQuotePDF(data) {
         startY: y,
         head: tableHead,
         body: tableRows,
-        margin: { left: margin, right: margin },
+        margin: { top: 39, left: margin, right: margin, bottom: 20 },
         styles: {
             font: 'helvetica',
             fontSize: 8.5,
@@ -282,7 +277,9 @@ function generateQuotePDF(data) {
         },
         columnStyles: colWidths,
         didDrawPage: function (data) {
-            y = data.cursor.y;
+            if (data.pageNumber > 1) {
+                drawHeader();
+            }
         }
     });
 
@@ -356,7 +353,7 @@ function generateQuotePDF(data) {
     if (data.termsFreight) termsList.push(`6) FREIGHT / TRANSPORTATION: ${data.termsFreight}`);
 
     termsList.forEach(t => {
-        checkPageBreak(10);
+        checkPageBreak(12);
         const splitT = doc.splitTextToSize(t, contentWidth);
         doc.text(splitT, margin, y);
         y += (splitT.length * 4.5) + 1.5;
@@ -434,10 +431,10 @@ function generateQuotePDF(data) {
         doc.setLineWidth(0.3);
         doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
 
-        setFont('normal', 7.5);
+        setFont('normal', 7);
         setColor([100, 100, 100]);
         const footerText = 'SENSOTECH DESIGN AND AUTOMATION | 20, Suprabhat Nagar, Thigalarapalya, Peenya Industrial Area, Bangalore - 560058 | Tel: +91 8884676895 Email: sales@stda.in';
-        doc.text(footerText, margin, pageHeight - 9);
+        doc.text(footerText, margin, pageHeight - 9, { maxWidth: 148 });
 
         const pageStr = `Page ${i} of ${totalPages}`;
         doc.text(pageStr, pageWidth - margin, pageHeight - 9, { align: 'right' });
