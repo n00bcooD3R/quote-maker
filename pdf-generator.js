@@ -20,15 +20,46 @@ let stda_logo_base64 = null;
     img.src = 'header_img_0_0.png';
 })();
 
+function getJsPDFClass() {
+    if (typeof window.jsPDF === 'function') return window.jsPDF;
+    if (window.jspdf && typeof window.jspdf.jsPDF === 'function') return window.jspdf.jsPDF;
+    if (typeof window.jspdf === 'function') return window.jspdf;
+    if (window.jsPDF && typeof window.jsPDF.default === 'function') return window.jsPDF.default;
+    return null;
+}
+
+function loadJsPDFScripts() {
+    return new Promise((resolve, reject) => {
+        const cls = getJsPDFClass();
+        if (cls) return resolve(cls);
+
+        const s1 = document.createElement('script');
+        s1.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+        s1.onload = () => {
+            const s2 = document.createElement('script');
+            s2.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js';
+            s2.onload = () => {
+                const loadedCls = getJsPDFClass();
+                if (loadedCls) resolve(loadedCls);
+                else reject(new Error('jsPDF class not found after dynamic script load'));
+            };
+            s2.onerror = reject;
+            document.head.appendChild(s2);
+        };
+        s1.onerror = reject;
+        document.head.appendChild(s1);
+    });
+}
+
 /**
  * Main PDF Generation function
  * @param {Object} data - Collected form data
  * @returns {jsPDF} doc - Prepared jsPDF document
  */
 function generateQuotePDF(data) {
-    const jsPDFClass = window.jsPDF || (window.jspdf && window.jspdf.jsPDF) || window.jspdf;
+    const jsPDFClass = getJsPDFClass();
     if (!jsPDFClass) {
-        alert('jsPDF library is loading or unavailable. Please check your internet connection or reload.');
+        alert('jsPDF library is loading or unavailable. Please check your internet connection or reload the page.');
         throw new Error('jsPDF library is not defined on window object');
     }
     const doc = new jsPDFClass('p', 'mm', 'a4');
@@ -415,5 +446,6 @@ function generateQuotePDF(data) {
     return doc;
 }
 
-// Attach function to global window scope
+// Attach functions to global window scope
 window.generateQuotePDF = generateQuotePDF;
+window.loadJsPDFScripts = loadJsPDFScripts;

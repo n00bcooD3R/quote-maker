@@ -508,24 +508,32 @@ function collectFormData() {
 }
 
 // PDF Modal Controls
-function generatePDF(preview = false) {
+async function generatePDF(preview = false) {
     const data = collectFormData();
     if (typeof window.generateQuotePDF !== 'function') {
         showToast('PDF Generator script not loaded', 'error');
         return;
     }
     
-    const doc = window.generateQuotePDF(data);
-    
-    if (preview) {
-        const blobUrl = doc.output('bloburl');
-        const iframe = document.getElementById('pdf-preview-frame');
-        iframe.src = blobUrl;
-        document.getElementById('modal-pdf-preview').classList.add('active');
-    } else {
-        const filename = `${data.quotationNo.replace(/[\/\\?%*:|"<>]/g, '_')}_Quotation.pdf`;
-        doc.save(filename);
-        showToast(`Downloaded: ${filename}`, 'success');
+    try {
+        if (typeof window.loadJsPDFScripts === 'function') {
+            await window.loadJsPDFScripts();
+        }
+        const doc = window.generateQuotePDF(data);
+        
+        if (preview) {
+            const blobUrl = doc.output('bloburl');
+            const iframe = document.getElementById('pdf-preview-frame');
+            iframe.src = blobUrl;
+            document.getElementById('modal-pdf-preview').classList.add('active');
+        } else {
+            const filename = `${data.quotationNo.replace(/[\/\\?%*:|"<>]/g, '_')}_Quotation.pdf`;
+            doc.save(filename);
+            showToast(`Downloaded: ${filename}`, 'success');
+        }
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        showToast('Failed to load PDF library. Please check your network.', 'error');
     }
 }
 
