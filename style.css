@@ -141,6 +141,10 @@ body::before {
     width: 44px;
     height: 44px;
     object-fit: contain;
+    background-color: #000000;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.3));
 }
 
