@@ -911,3 +911,333 @@ textarea {
 .empty-items-state p {
     margin-bottom: 12px;
 }
+
+/* ===================== COMPREHENSIVE RESPONSIVE DESIGN ===================== */
+
+/* --- Laptops & Small Desktops (<= 1024px) --- */
+@media (max-width: 1024px) {
+    .app-container {
+        max-width: 100%;
+        padding: 0 20px;
+        margin: 20px auto 110px;
+        gap: 20px;
+    }
+
+    .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+    }
+}
+
+/* --- Tablets & Mobile Devices (<= 768px) --- */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    /* Header */
+    .app-header {
+        padding: 10px 16px;
+    }
+    .logo-container {
+        gap: 10px;
+    }
+    .logo-container img {
+        width: 38px;
+        height: 38px;
+    }
+    .company-name {
+        font-size: 14px;
+    }
+    .app-title {
+        font-size: 11px;
+    }
+
+    /* Mode Switcher & Presets */
+    .mode-switcher-container {
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .mode-switcher-label {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .mode-switcher-label > span {
+        font-size: 13px;
+    }
+    .mode-buttons {
+        width: 100%;
+        display: flex;
+    }
+    .btn-mode {
+        flex: 1;
+        justify-content: center;
+        padding: 9px 12px;
+        font-size: 12.5px;
+    }
+    .preset-buttons {
+        width: 100%;
+        display: flex;
+        gap: 8px;
+    }
+    .preset-buttons .btn {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    /* Main Container & Section Cards */
+    .app-container {
+        padding: 0 14px;
+        margin: 14px auto 130px;
+        gap: 16px;
+    }
+    .section-card {
+        padding: 16px;
+        border-radius: var(--radius-lg);
+    }
+    .section-header {
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .section-header h2 {
+        font-size: 15px;
+    }
+    .section-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    .header-item-actions {
+        width: 100%;
+        margin-top: 4px;
+    }
+    .header-item-actions .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 14px;
+    }
+
+    /* Forms */
+    .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    /* Items Table */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+    .items-table {
+        min-width: 680px; /* Preserve readable column widths during horizontal scroll */
+    }
+    .items-table th {
+        padding: 10px 8px;
+        font-size: 10.5px;
+    }
+    .items-table td {
+        padding: 8px 6px;
+    }
+    .items-table input,
+    .items-table textarea,
+    .items-table select {
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+
+    /* Summary Card */
+    .summary-container {
+        justify-content: stretch;
+        margin-top: 14px;
+    }
+    .summary-card {
+        min-width: 0;
+        width: 100%;
+        padding: 14px 16px;
+    }
+
+    /* Floating Actions Bar */
+    .floating-actions {
+        bottom: 14px;
+        width: calc(100% - 24px);
+        max-width: 460px;
+        padding: 8px 12px;
+        gap: 10px;
+        border-radius: 30px;
+    }
+    .floating-actions .btn {
+        flex: 1;
+        padding: 10px 14px;
+        font-size: 13px;
+        justify-content: center;
+    }
+
+    /* Modals */
+    .modal-overlay {
+        padding: 12px;
+    }
+    .modal-container {
+        max-width: 100%;
+        max-height: 92vh;
+        border-radius: var(--radius-lg);
+    }
+    .modal-header {
+        padding: 12px 16px;
+    }
+    .modal-header h3 {
+        font-size: 15px;
+    }
+    .modal-body {
+        padding: 16px;
+    }
+    .pdf-preview-frame {
+        height: 68vh;
+    }
+    .item-type-card {
+        padding: 12px 14px;
+        gap: 12px;
+    }
+    .item-type-card .type-icon {
+        font-size: 24px;
+        padding: 6px;
+    }
+    .item-type-card .type-title {
+        font-size: 14px;
+    }
+    .item-type-card .type-desc {
+        font-size: 11.5px;
+    }
+}
+
+/* --- Small Mobile Phones (<= 480px) --- */
+@media (max-width: 480px) {
+    /* Header */
+    .app-header {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    .company-name {
+        font-size: 12.5px;
+        line-height: 1.2;
+    }
+    .app-title {
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 160px;
+    }
+    .logo-container {
+        gap: 8px;
+    }
+    .logo-container img {
+        width: 32px;
+        height: 32px;
+    }
+    .header-actions .btn {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    /* Mode Switcher & Presets */
+    .preset-buttons {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .preset-buttons .btn {
+        width: 100%;
+    }
+
+    /* Main Layout */
+    .app-container {
+        padding: 0 10px;
+        margin: 10px auto 140px;
+        gap: 12px;
+    }
+    .section-card {
+        padding: 12px 10px;
+        border-radius: var(--radius-md);
+    }
+    .section-header h2 {
+        font-size: 14px;
+    }
+
+    /* Form Grid - Full width inputs on narrow screens */
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    select,
+    textarea {
+        font-size: 16px; /* Prevents browser view auto-zoom on iOS focus */
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Client Lookup Search */
+    .search-input-wrapper input {
+        font-size: 14px;
+    }
+
+    /* Summary Card */
+    .summary-card {
+        padding: 12px;
+    }
+    .summary-line {
+        font-size: 12px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .summary-line label {
+        font-size: 11.5px;
+    }
+    .summary-line.grand-total {
+        font-size: 14px;
+    }
+    .summary-line.grand-total .amount {
+        font-size: 16px;
+    }
+
+    /* Floating Action Bar */
+    .floating-actions {
+        bottom: 10px;
+        width: calc(100% - 16px);
+        padding: 6px 8px;
+        gap: 6px;
+    }
+    .floating-actions .btn {
+        padding: 10px 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+    }
+    .toast {
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+
+    /* Modals */
+    .modal-overlay {
+        padding: 8px;
+    }
+    .pdf-preview-frame {
+        height: 60vh;
+    }
+}
+
