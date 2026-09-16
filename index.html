@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="STDA Project & Materials Quotation Generator - Create, edit and export custom proposals and material quotes as PDF">
+    <title>Project & Materials Quote Maker | STDA</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+    <!-- ============ APP HEADER ============ -->
+    <header class="app-header">
+        <div class="logo-container">
+            <img src="header_img_0_0.png" alt="STDA Logo" id="stda-logo">
+            <div class="logo-text">
+                <span class="company-name">SensoTech Design & Automation</span>
+                <span class="app-title">Project & Materials Quote Maker</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="../index.html" class="btn btn-ghost btn-sm" title="Go to Tax Invoice / Standard Quotation App">
+                🧾 Invoice App
+            </a>
+            <button class="btn btn-ghost btn-sm" id="btn-reset-form" title="Reset Form">
+                🔄 Clear
+            </button>
+        </div>
+    </header>
+
+    <!-- ============ MAIN CONTAINER ============ -->
+    <main class="app-container">
+
+        <!-- ============ MODE SWITCHER & PRESETS ============ -->
+        <div class="mode-switcher-container">
+            <div class="mode-switcher-label">
+                <span>Quotation Type:</span>
+                <div class="mode-buttons">
+                    <button type="button" class="btn-mode active" data-mode="project" id="btn-mode-project">
+                        🏗️ Project Quotation
+                    </button>
+                    <button type="button" class="btn-mode" data-mode="materials" id="btn-mode-materials">
+                        📦 Materials List
+                    </button>
+                </div>
+            </div>
+            <div class="preset-buttons">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-project-sample">
+                    📋 Load Project Sample
+                </button>
+                <button type="button" class="btn btn-amber btn-sm" id="btn-load-materials-sample">
+                    📦 Load Materials Sample
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ CLIENT LOOKUP ============ -->
+        <section class="section-card" id="section-client-search">
+            <div class="section-header">
+                <div class="section-icon blue">🔍</div>
+                <h2>Client Lookup & Auto-fill</h2>
+                <span class="section-badge" id="client-count-badge">0 clients</span>
+            </div>
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="client-search" placeholder="Search saved clients by company name or GSTIN..." autocomplete="off">
+                    <button class="search-clear" id="search-clear">✕</button>
+                </div>
+                <div class="search-dropdown" id="search-dropdown"></div>
+            </div>
+        </section>
+
+        <!-- ============ QUOTATION METADATA & RECIPIENT ============ -->
+        <section class="section-card" id="section-quotation-header">
+            <div class="section-header">
+                <div class="section-icon cyan">📋</div>
+                <h2 id="header-section-title">Quotation Details & Recipient</h2>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Ref. No. <span class="required">*</span></label>
+                    <input type="text" id="quotation-no" placeholder="e.g. STDA/2526/0106R2">
+                </div>
+                <div class="form-group">
+                    <label>Date <span class="required">*</span></label>
+                    <input type="text" id="quotation-date" placeholder="e.g. 13th Feb 2026">
+                </div>
+                <div class="form-group">
+                    <label>Kind Attention</label>
+                    <input type="text" id="kind-attention" placeholder="e.g. Mr Anilkumar Sir / Purchase Dept">
+                </div>
+                
+                <!-- Recipient Info -->
+                <div class="form-group full-width">
+                    <label>To (Company Name & Address) <span class="required">*</span></label>
+                    <input type="text" id="customer-name" placeholder="M/s Grindwell Norton Ltd" style="font-weight: 600; margin-bottom: 6px;">
+                    <textarea id="customer-address" placeholder="Full address (e.g. Devanahalli Road, Off Old Madras Road, Bengaluru-560049)" rows="2"></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Subject <span class="required">*</span></label>
+                    <input type="text" id="quotation-subject" placeholder="Proposal for Online Floor Pad Weighing and Printing Setup">
+                </div>
+
+                <div class="form-group">
+                    <label>Salutation</label>
+                    <input type="text" id="quotation-salutation" placeholder="Dear Sir,">
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Opening Letter / Paragraph</label>
+                    <textarea id="opening-text" rows="3" placeholder="We thank you for considering us for this project. Based on the details received verbally & mail..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ COSTING & ITEMS TABLE ============ -->
+        <section class="section-card" id="section-costing">
+            <div class="section-header">
+                <div class="section-icon amber">💰</div>
+                <h2 id="costing-section-title">2. Costing & BOM Breakdown</h2>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-add-item">
+                    ➕ Add Item
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="items-table" id="items-table">
+                    <thead>
+                        <tr>
+                            <th class="col-sl">SL</th>
+                            <th class="col-part" id="th-part-no">Part No</th>
+                            <th class="col-desc">Description / Scope</th>
+                            <th class="col-qty">Qty</th>
+                            <th class="col-price">Unit Price (₹)</th>
+                            <th class="col-total">Total Price (₹)</th>
+                            <th class="col-actions">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-table-body">
+                        <!-- Dynamic rows rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total Calculation Summary -->
+            <div class="summary-container">
+                <div class="summary-card">
+                    <div class="summary-line">
+                        <span>Subtotal Amount:</span>
+                        <span id="summary-subtotal" style="font-weight: 700;">₹ 0.00</span>
+                    </div>
+                    <div class="summary-line">
+                        <label style="margin: 0; text-transform: none; font-size: 13px;">GST Rate & Mode:</label>
+                        <select id="gst-mode" style="width: auto; padding: 4px 8px; font-size: 12px;">
+                            <option value="extra_18">Extra 18% GST</option>
+                            <option value="included_18">18% GST Included</option>
+                            <option value="none">Taxes as applicable / Extra</option>
+                        </select>
+                    </div>
+                    <div class="summary-line" id="summary-gst-row">
+                        <span>GST (18%):</span>
+                        <span id="summary-gst-amount" style="font-weight: 600; color: var(--accent-cyan);">₹ 0.00</span>
+                    </div>
+                    <div class="summary-line grand-total">
+                        <span>Total Price:</span>
+                        <span class="amount" id="summary-grand-total">₹ 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ TECHNICAL PROPOSAL (Project Mode Only) ============ -->
+        <section class="section-card" id="section-technical-proposal">
+            <div class="section-header">
+                <div class="section-icon cyan">⚙️</div>
+                <h2>1. Technical Proposal</h2>
+            </div>
+            <div class="form-group full-width">
+                <label>Technical Details / Scope Statement</label>
+                <textarea id="technical-proposal-text" rows="2" placeholder="PLEASE FIND THE ATTACHED ANNEXURE FOR TECHNICAL PROPOSAL"></textarea>
+            </div>
+        </section>
+
+        <!-- ============ COMPLIANCE & DEVIATION (Project Mode Only) ============ -->
+        <section class="section-card" id="section-compliance">
+            <div class="section-header">
+                <div class="section-icon indigo">⚠️</div>
+                <h2>3. Compliance & Deviation</h2>
+            </div>
+            <div class="form-group full-width">
+                <label>Compliance & Deviation Notes</label>
+                <textarea id="compliance-text" rows="3" placeholder="1) Scope of supply shall be limited to above furnished BOM...&#10;2) Field Wiring Sensotech Scope"></textarea>
+            </div>
+        </section>
+
+        <!-- ============ COMMERCIAL TERMS & CONDITIONS ============ -->
+        <section class="section-card" id="section-commercial-terms">
+            <div class="section-header">
+                <div class="section-icon emerald">📄</div>
+                <h2>Commercial Terms & Conditions</h2>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>Terms of Payment</label>
+                    <input type="text" id="terms-payment" placeholder="50% Advance, 40% +GST Against Delivery, Remaining after installation">
+                </div>
+                <div class="form-group">
+                    <label>Taxes & Duties</label>
+                    <input type="text" id="terms-taxes" placeholder="All Taxes and duties as applicable shall be charged extra (18% GST)">
+                </div>
+                <div class="form-group">
+                    <label>Freight / Transportation</label>
+                    <input type="text" id="terms-freight" placeholder="At Actual / Customer Scope / Our Scope">
+                </div>
+                <div class="form-group">
+                    <label>Delivery</label>
+                    <input type="text" id="terms-delivery" placeholder="4 to 6 Weeks from Date of PO & Advance payment">
+                </div>
+                <div class="form-group">
+                    <label>Validity</label>
+                    <input type="text" id="terms-validity" placeholder="Our offer shall be firm and remain valid up to 30 days from the date of this offer.">
+                </div>
+                <div class="form-group full-width">
+                    <label>Commissioning & Site Scope</label>
+                    <textarea id="terms-commissioning" rows="2" placeholder="Lodging and boarding will be customer scope while installation and service period. Manpower transportation charges customer scope."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ BANK DETAILS & PO INSTRUCTIONS ============ -->
+        <section class="section-card" id="section-bank-po">
+            <div class="section-header">
+                <div class="section-icon blue">🏦</div>
+                <h2>Bank Details & PO Sign-off</h2>
+            </div>
+            <div class="two-column">
+                <!-- Bank Account Details -->
+                <div>
+                    <h3 style="font-size: 14px; font-weight: 600; color: var(--accent-sky); margin-bottom: 12px;">Bank Account Details</h3>
+                    <div class="form-grid" style="grid-template-columns: 1fr;">
+                        <div class="form-group">
+                            <label>Bank Name</label>
+                            <input type="text" id="bank-name" placeholder="HDFC BANK LTD">
+                        </div>
+                        <div class="form-group">
+                            <label>Branch</label>
+                            <input type="text" id="bank-branch" placeholder="Peenya Industrial Area Bengaluru- 560058">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number</label>
+                            <input type="text" id="bank-account" placeholder="50200034569702">
+                        </div>
+                        <div class="form-group">
+                            <label>RTGS/NEFT IFSC</label>
+                            <input type="text" id="bank-ifsc" placeholder="HDFC0001232">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PO & Signatory Details -->
+                <div>
+                    <h3 style="font-size: 14px; font-weight: 600; color: var(--accent-sky); margin-bottom: 12px;">Signatory & PO Details</h3>
+                    <div class="form-grid" style="grid-template-columns: 1fr;">
+                        <div class="form-group">
+                            <label>Signatory Name</label>
+                            <input type="text" id="signatory-name" placeholder="Bapu Patil">
+                        </div>
+                        <div class="form-group">
+                            <label>Designation / Company</label>
+                            <input type="text" id="signatory-company" placeholder="SensoTech Design and Automation">
+                        </div>
+                        <div class="form-group">
+                            <label>Contact Mobile</label>
+                            <input type="text" id="signatory-mobile" placeholder="+91 8884676895 / 9901578263">
+                        </div>
+                        <div class="form-group">
+                            <label>Email & GSTIN</label>
+                            <input type="text" id="signatory-email-gst" placeholder="sales@stda.in | GSTIN: 29CZBPP8121M1ZV">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============ FLOATING ACTION BAR ============ -->
+    <div class="floating-actions">
+        <button class="btn btn-secondary btn-lg" id="btn-preview-pdf">
+            👁️ Preview PDF
+        </button>
+        <button class="btn btn-primary btn-lg" id="btn-download-pdf">
+            📥 Download PDF
+        </button>
+    </div>
+
+    <!-- ============ PDF PREVIEW MODAL ============ -->
+    <div class="modal-overlay" id="modal-pdf-preview">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>PDF Preview</h3>
+                <button class="modal-close" id="close-pdf-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdf-preview-frame" class="pdf-preview-frame"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ TOAST CONTAINER ============ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Application JavaScript -->
+    <script src="pdf-generator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
