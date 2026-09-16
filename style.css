@@ -760,3 +760,154 @@ textarea {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
+
+/* ===================== ADD ITEM TYPE SELECTION MODAL & GROUPS ===================== */
+.modal-container.modal-sm {
+    max-width: 520px;
+}
+
+.selector-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 18px;
+}
+
+.item-type-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.item-type-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    transition: var(--transition-fast);
+    width: 100%;
+}
+
+.item-type-card:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--accent-sky);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.item-type-card .type-icon {
+    font-size: 28px;
+    line-height: 1;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+.item-type-card .type-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.item-type-card .type-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.item-type-card .type-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Group Headers & Tables */
+.item-group-wrapper {
+    margin-bottom: 20px;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid var(--border-medium);
+    border-bottom: none;
+}
+
+.group-header-project {
+    background: linear-gradient(90deg, rgba(31, 83, 121, 0.35) 0%, rgba(14, 165, 233, 0.1) 100%);
+    border-color: rgba(14, 165, 233, 0.3);
+    color: var(--text-accent);
+}
+
+.group-header-materials {
+    background: linear-gradient(90deg, rgba(217, 119, 6, 0.3) 0%, rgba(251, 191, 36, 0.1) 100%);
+    border-color: rgba(251, 191, 36, 0.3);
+    color: var(--accent-amber);
+}
+
+.group-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.badge-project {
+    background: rgba(14, 165, 233, 0.2);
+    color: var(--accent-sky);
+    border: 1px solid rgba(14, 165, 233, 0.4);
+}
+
+.badge-materials {
+    background: rgba(251, 191, 36, 0.2);
+    color: var(--accent-amber);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+/* Item Type Select Badge in Table Rows */
+.col-type {
+    width: 115px;
+}
+
+.select-item-type {
+    width: 100%;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-medium);
+    cursor: pointer;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.badge-select-project {
+    border-color: rgba(14, 165, 233, 0.5);
+    color: var(--accent-sky);
+}
+
+.badge-select-materials {
+    border-color: rgba(251, 191, 36, 0.5);
+    color: var(--accent-amber);
+}
+
+.empty-items-state {
+    text-align: center;
+    padding: 32px 16px;
+    background: var(--bg-glass);
+    border: 1px dashed var(--border-medium);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+}
+.empty-items-state p {
+    margin-bottom: 12px;
+}

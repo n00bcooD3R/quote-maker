@@ -59,6 +59,27 @@ async function loadClients() {
     }
 }
 
+// Sort Items: All Project items first, followed by all Materials items
+function sortItems() {
+    state.items.sort((a, b) => {
+        const typeA = a.type || 'project';
+        const typeB = b.type || 'project';
+        if (typeA === typeB) return 0;
+        return typeA === 'project' ? -1 : 1;
+    });
+}
+
+// Add Item Type Modal Handlers
+function openAddItemModal() {
+    const modal = document.getElementById('modal-add-item-type');
+    if (modal) modal.classList.add('active');
+}
+
+function closeAddItemModal() {
+    const modal = document.getElementById('modal-add-item-type');
+    if (modal) modal.classList.remove('active');
+}
+
 // Bind Events
 function bindEvents() {
     // Mode Switching
@@ -69,9 +90,30 @@ function bindEvents() {
     document.getElementById('btn-load-project-sample').addEventListener('click', loadProjectSample);
     document.getElementById('btn-load-materials-sample').addEventListener('click', loadMaterialsSample);
 
-    // Form Controls
+    // Form Controls & Add Item Modal
     document.getElementById('btn-reset-form').addEventListener('click', resetForm);
-    document.getElementById('btn-add-item').addEventListener('click', () => addItemRow());
+    document.getElementById('btn-add-item').addEventListener('click', openAddItemModal);
+    document.getElementById('close-add-item-modal').addEventListener('click', closeAddItemModal);
+
+    document.getElementById('btn-add-type-project').addEventListener('click', () => {
+        closeAddItemModal();
+        addItemRow({}, 'project');
+        showToast('Added Project Quotation Item', 'info');
+    });
+
+    document.getElementById('btn-add-type-materials').addEventListener('click', () => {
+        closeAddItemModal();
+        addItemRow({}, 'materials');
+        showToast('Added Materials List Item', 'info');
+    });
+
+    const addItemModal = document.getElementById('modal-add-item-type');
+    if (addItemModal) {
+        addItemModal.addEventListener('click', (e) => {
+            if (e.target === addItemModal) closeAddItemModal();
+        });
+    }
+
     document.getElementById('gst-mode').addEventListener('change', calculateTotals);
 
     // Client Lookup Search
@@ -142,26 +184,23 @@ function setMode(mode) {
     
     const btnProject = document.getElementById('btn-mode-project');
     const btnMaterials = document.getElementById('btn-mode-materials');
-    const thPartNo = document.getElementById('th-part-no');
     const secTech = document.getElementById('section-technical-proposal');
     const secCompliance = document.getElementById('section-compliance');
-    const secBankPo = document.getElementById('section-bank-po');
     const costingTitle = document.getElementById('costing-section-title');
 
     if (mode === 'project') {
         btnProject.classList.add('active');
         btnMaterials.classList.remove('active');
-        thPartNo.style.display = 'none';
-        secTech.style.display = 'block';
-        secCompliance.style.display = 'block';
-        costingTitle.textContent = '2. Costing & Project Scope Breakdown';
+        if (secTech) secTech.style.display = 'block';
+        if (secCompliance) secCompliance.style.display = 'block';
+        if (costingTitle) costingTitle.textContent = '2. Costing & Scope Breakdown';
     } else {
         btnMaterials.classList.add('active');
         btnProject.classList.remove('active');
-        thPartNo.style.display = '';
-        secTech.style.display = 'none';
-        secCompliance.style.display = 'none';
-        costingTitle.textContent = 'Materials & Services Costing Breakdown';
+        const hasProjectItems = state.items.some(i => (i.type || 'project') === 'project');
+        if (secTech) secTech.style.display = hasProjectItems ? 'block' : 'none';
+        if (secCompliance) secCompliance.style.display = hasProjectItems ? 'block' : 'none';
+        if (costingTitle) costingTitle.textContent = 'Costing & Materials Breakdown';
     }
 
     renderItemRows();
@@ -169,15 +208,18 @@ function setMode(mode) {
 }
 
 // Add Item Row
-function addItemRow(item = {}) {
+function addItemRow(item = {}, targetType = null) {
+    const itemType = targetType || item.type || state.mode || 'project';
     const newItem = {
         id: Date.now() + Math.random().toString(36).substr(2, 4),
+        type: itemType,
         partNo: item.partNo || '',
         description: item.description || '',
         qty: item.qty !== undefined ? item.qty : 1,
         unitPrice: item.unitPrice !== undefined ? item.unitPrice : 0
     };
     state.items.push(newItem);
+    sortItems();
     renderItemRows();
     calculateTotals();
 }
@@ -193,54 +235,113 @@ function deleteItemRow(id) {
     calculateTotals();
 }
 
-// Render Item Table Rows
+// Render Item Tables (Grouped & Sorted: Project Items 1st, Materials Items 2nd)
 function renderItemRows() {
-    const tbody = document.getElementById('items-table-body');
-    if (!tbody) return;
+    const container = document.getElementById('costing-groups-container');
+    if (!container) return;
 
-    tbody.innerHTML = state.items.map((item, index) => {
-        const total = (item.qty || 0) * (item.unitPrice || 0);
-        const isProject = state.mode === 'project';
+    sortItems();
 
-        return `
-            <tr data-id="${item.id}">
-                <td class="col-sl">${index + 1}</td>
-                ${!isProject ? `
-                    <td class="col-part">
-                        <input type="text" class="input-part-no" value="${escapeHtml(item.partNo)}" placeholder="Part No / Ref">
-                    </td>
-                ` : ''}
-                <td class="col-desc">
-                    <textarea class="input-desc" rows="${isProject ? 4 : 2}" placeholder="${isProject ? 'Project Scope & Item description...' : 'Item description...'}">${escapeHtml(item.description)}</textarea>
-                </td>
-                <td class="col-qty">
-                    <input type="number" class="input-qty" value="${item.qty}" min="1" step="1">
-                </td>
-                <td class="col-price">
-                    <input type="number" class="input-price" value="${item.unitPrice}" min="0" step="any">
-                </td>
-                <td class="col-total">
-                    <span class="calculated-total">₹ ${formatINR(total)}</span>
-                </td>
-                <td class="col-actions">
-                    <button type="button" class="btn btn-danger btn-sm btn-delete-row" title="Delete Row">✕</button>
-                </td>
-            </tr>
+    const projectItems = state.items.filter(i => (i.type || 'project') === 'project');
+    const materialsItems = state.items.filter(i => i.type === 'materials');
+
+    if (state.items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-items-state">
+                <p>No items added yet to this quotation.</p>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openAddItemModal()">➕ Add Your First Item</button>
+            </div>
         `;
-    }).join('');
+        return;
+    }
 
-    // Attach Row Input Listeners
-    tbody.querySelectorAll('tr').forEach(tr => {
+    let html = '';
+
+    // Group 1: Project Items Table
+    if (projectItems.length > 0) {
+        html += `
+            <div class="item-group-wrapper">
+                <div class="group-header group-header-project">
+                    <span class="group-title">🏗️ Project Quotations / Scope Breakdown</span>
+                    <span class="group-badge badge-project">${projectItems.length} item${projectItems.length > 1 ? 's' : ''}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="items-table table-project">
+                        <thead>
+                            <tr>
+                                <th class="col-sl">SL</th>
+                                <th class="col-type">Type</th>
+                                <th class="col-desc">Description / Scope</th>
+                                <th class="col-qty">Qty</th>
+                                <th class="col-price">Unit Price (₹)</th>
+                                <th class="col-total">Total Price (₹)</th>
+                                <th class="col-actions">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${projectItems.map((item, index) => renderSingleRowHtml(item, index + 1, 'project')).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    // Group 2: Materials Items Table
+    if (materialsItems.length > 0) {
+        html += `
+            <div class="item-group-wrapper">
+                <div class="group-header group-header-materials">
+                    <span class="group-title">📦 Materials & Services Breakdown</span>
+                    <span class="group-badge badge-materials">${materialsItems.length} item${materialsItems.length > 1 ? 's' : ''}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="items-table table-materials">
+                        <thead>
+                            <tr>
+                                <th class="col-sl">SL</th>
+                                <th class="col-type">Type</th>
+                                <th class="col-part">Part No</th>
+                                <th class="col-desc">Description</th>
+                                <th class="col-qty">Qty</th>
+                                <th class="col-price">Unit Price (₹)</th>
+                                <th class="col-total">Total Price (₹)</th>
+                                <th class="col-actions">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${materialsItems.map((item, index) => renderSingleRowHtml(item, index + 1, 'materials')).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+
+    // Attach Row Input & Type Selector Event Listeners
+    container.querySelectorAll('tr[data-id]').forEach(tr => {
         const id = tr.getAttribute('data-id');
         const item = state.items.find(i => i.id === id);
         if (!item) return;
 
+        const selectType = tr.querySelector('.select-item-type');
         const inputPart = tr.querySelector('.input-part-no');
         const inputDesc = tr.querySelector('.input-desc');
         const inputQty = tr.querySelector('.input-qty');
         const inputPrice = tr.querySelector('.input-price');
         const btnDelete = tr.querySelector('.btn-delete-row');
 
+        if (selectType) {
+            selectType.addEventListener('change', (e) => {
+                item.type = e.target.value;
+                sortItems();
+                renderItemRows();
+                calculateTotals();
+                showToast(`Item type changed to ${item.type === 'project' ? 'Project' : 'Materials'}`, 'info');
+            });
+        }
         if (inputPart) {
             inputPart.addEventListener('input', (e) => {
                 item.partNo = e.target.value;
@@ -269,6 +370,50 @@ function renderItemRows() {
             btnDelete.addEventListener('click', () => deleteItemRow(id));
         }
     });
+
+    // Update visibility of Technical Proposal and Compliance sections based on Project items presence
+    const hasProjectItems = state.items.some(i => (i.type || 'project') === 'project');
+    const secTech = document.getElementById('section-technical-proposal');
+    const secCompliance = document.getElementById('section-compliance');
+    if (secTech) secTech.style.display = (hasProjectItems || state.mode === 'project') ? 'block' : 'none';
+    if (secCompliance) secCompliance.style.display = (hasProjectItems || state.mode === 'project') ? 'block' : 'none';
+}
+
+function renderSingleRowHtml(item, slNo, itemType) {
+    const total = (item.qty || 0) * (item.unitPrice || 0);
+    const isProject = itemType === 'project';
+
+    return `
+        <tr data-id="${item.id}" class="row-item row-type-${itemType}">
+            <td class="col-sl">${slNo}</td>
+            <td class="col-type">
+                <select class="select-item-type badge-select-${itemType}">
+                    <option value="project" ${isProject ? 'selected' : ''}>🏗️ Project</option>
+                    <option value="materials" ${!isProject ? 'selected' : ''}>📦 Material</option>
+                </select>
+            </td>
+            ${!isProject ? `
+                <td class="col-part">
+                    <input type="text" class="input-part-no" value="${escapeHtml(item.partNo)}" placeholder="Part No / Ref">
+                </td>
+            ` : ''}
+            <td class="col-desc">
+                <textarea class="input-desc" rows="${isProject ? 3 : 2}" placeholder="${isProject ? 'Project Scope & Item description...' : 'Item description...'}">${escapeHtml(item.description)}</textarea>
+            </td>
+            <td class="col-qty">
+                <input type="number" class="input-qty" value="${item.qty}" min="1" step="1">
+            </td>
+            <td class="col-price">
+                <input type="number" class="input-price" value="${item.unitPrice}" min="0" step="any">
+            </td>
+            <td class="col-total">
+                <span class="calculated-total">₹ ${formatINR(total)}</span>
+            </td>
+            <td class="col-actions">
+                <button type="button" class="btn btn-danger btn-sm btn-delete-row" title="Delete Row">✕</button>
+            </td>
+        </tr>
+    `;
 }
 
 function updateRowTotal(tr, item) {
@@ -361,6 +506,7 @@ Thanking you`;
     state.items = [
         {
             id: 'proj_item_1',
+            type: 'project',
             partNo: '',
             description: `Design Manufacturing and delivery and installation. (Parts machining, mechanical std parts procurement, parts assembly, and delivery of products and installation.) of Online Floor Pad Weighing and Printing Setup
 
@@ -419,6 +565,7 @@ function loadMaterialsSample() {
     state.items = [
         {
             id: 'mat_item_1',
+            type: 'materials',
             partNo: 'DVP32ES200T',
             description: '16DI/16DO , Transistor output',
             qty: 1,
@@ -426,6 +573,7 @@ function loadMaterialsSample() {
         },
         {
             id: 'mat_item_2',
+            type: 'materials',
             partNo: 'DVP08XP211T',
             description: '4DI/4DO Tx output',
             qty: 1,
@@ -433,6 +581,7 @@ function loadMaterialsSample() {
         },
         {
             id: 'mat_item_3',
+            type: 'materials',
             partNo: 'DOP-107BV',
             description: '7.0" Reso. 800x480 RS232/RS-422/RS-485 USB Client & Host Basic',
             qty: 1,
@@ -440,6 +589,7 @@ function loadMaterialsSample() {
         },
         {
             id: 'mat_item_4',
+            type: 'materials',
             partNo: 'Programming',
             description: `1. PLC Programming
 2. HMI Programming

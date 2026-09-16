@@ -4,21 +4,36 @@
  */
 
 let stda_logo_base64 = null;
+let stda_seal_base64 = null;
 
-// Pre-load the logo as base64
-(function loadLogo() {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function () {
+function getBase64FromImg(img) {
+    try {
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width = img.naturalWidth || img.width || 300;
+        canvas.height = img.naturalHeight || img.height || 300;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        stda_logo_base64 = canvas.toDataURL('image/png');
-    };
-    img.src = 'header_img_0_0.png';
-})();
+        return canvas.toDataURL('image/png');
+    } catch (e) {
+        console.warn('Canvas conversion failed:', e);
+        return null;
+    }
+}
+
+const logoImg = new Image();
+logoImg.crossOrigin = 'anonymous';
+logoImg.onload = function () {
+    stda_logo_base64 = getBase64FromImg(logoImg);
+};
+logoImg.src = 'header_img_0_0.png';
+
+const sealImg = new Image();
+sealImg.crossOrigin = 'anonymous';
+sealImg.onload = function () {
+    stda_seal_base64 = getBase64FromImg(sealImg);
+};
+sealImg.src = 'seal-bg.png';
+
 
 function getJsPDFClass() {
     if (typeof window.jsPDF === 'function') return window.jsPDF;
@@ -94,6 +109,9 @@ function generateQuotePDF(data) {
         const curY = margin;
 
         // Logo
+        if (!stda_logo_base64 && logoImg.complete && logoImg.naturalWidth > 0) {
+            stda_logo_base64 = getBase64FromImg(logoImg);
+        }
         if (stda_logo_base64) {
             try {
                 doc.addImage(stda_logo_base64, 'PNG', margin, curY, 16, 14);
@@ -201,8 +219,13 @@ function generateQuotePDF(data) {
         y += (splitOpen.length * 4.5) + 6;
     }
 
-    // ================= PROJECT MODE TECHNICAL PROPOSAL =================
-    if (data.mode === 'project' && data.technicalProposalText) {
+    // Technical Proposal (if project items exist or project mode)
+    const projectItems = data.items.filter(i => (i.type || 'project') === 'project');
+    const materialsItems = data.items.filter(i => i.type === 'materials');
+    const hasProject = projectItems.length > 0;
+    const hasMaterials = materialsItems.length > 0;
+
+    if ((hasProject || data.mode === 'project') && data.technicalProposalText) {
         checkPageBreak(25);
         setFont('bold', 10.5);
         setColor(navy);
@@ -216,24 +239,20 @@ function generateQuotePDF(data) {
         y += (splitTech.length * 4.5) + 8;
     }
 
-    // ================= COSTING TABLE =================
-    checkPageBreak(30);
+    // ================= COSTING TABLES =================
+    
+    // 1. Render Project Items Table (if any exist)
+    if (hasProject) {
+        checkPageBreak(30);
 
-    setFont('bold', 10.5);
-    setColor(navy);
-    const tableSectionTitle = data.mode === 'project' ? '2. Costing' : 'Costing :';
-    doc.text(tableSectionTitle, margin, y);
-    y += 5;
+        setFont('bold', 10.5);
+        setColor(navy);
+        doc.text('2. Costing & Project Scope Breakdown', margin, y);
+        y += 5;
 
-    // Build Table Columns & Rows
-    const isProject = data.mode === 'project';
-    const tableHead = isProject
-        ? [['SL No', 'Description', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']]
-        : [['SL No', 'Part No', 'Description', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']];
-
-    const tableRows = data.items.map((item, idx) => {
-        const total = (item.qty || 0) * (item.unitPrice || 0);
-        if (isProject) {
+        const projHead = [['SL No', 'Description / Scope', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']];
+        const projRows = projectItems.map((item, idx) => {
+            const total = (item.qty || 0) * (item.unitPrice || 0);
             return [
                 idx + 1,
                 item.description || '',
@@ -241,7 +260,58 @@ function generateQuotePDF(data) {
                 fmtMoney(item.unitPrice || 0),
                 fmtMoney(total)
             ];
-        } else {
+        });
+
+        const projColWidths = { 
+            0: { cellWidth: 16 }, 
+            1: { cellWidth: 'auto' }, 
+            2: { cellWidth: 16, halign: 'center' }, 
+            3: { cellWidth: 32, halign: 'right' }, 
+            4: { cellWidth: 34, halign: 'right' } 
+        };
+
+        doc.autoTable({
+            startY: y,
+            head: projHead,
+            body: projRows,
+            margin: { top: 39, left: margin, right: margin, bottom: 20 },
+            styles: {
+                font: 'helvetica',
+                fontSize: 8.5,
+                cellPadding: 3,
+                lineColor: [180, 180, 180],
+                lineWidth: 0.2
+            },
+            headStyles: {
+                fillColor: navy,
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: projColWidths,
+            didDrawPage: function (pageData) {
+                if (pageData.pageNumber > 1) {
+                    drawHeader();
+                }
+            }
+        });
+
+        y = doc.previousAutoTable.finalY + 8;
+    }
+
+    // 2. Render Materials Items Table (if any exist)
+    if (hasMaterials) {
+        checkPageBreak(30);
+
+        setFont('bold', 10.5);
+        setColor(navy);
+        const matTitle = hasProject ? 'Materials & Services Breakdown:' : (data.mode === 'project' ? '2. Costing Breakdown' : 'Costing & Materials Breakdown :');
+        doc.text(matTitle, margin, y);
+        y += 5;
+
+        const matHead = [['SL No', 'Part No', 'Description', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']];
+        const matRows = materialsItems.map((item, idx) => {
+            const total = (item.qty || 0) * (item.unitPrice || 0);
             return [
                 idx + 1,
                 item.partNo || '',
@@ -250,42 +320,47 @@ function generateQuotePDF(data) {
                 fmtMoney(item.unitPrice || 0),
                 fmtMoney(total)
             ];
-        }
-    });
+        });
 
-    const colWidths = isProject
-        ? { 0: { cellWidth: 16 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 16, halign: 'center' }, 3: { cellWidth: 32, halign: 'right' }, 4: { cellWidth: 34, halign: 'right' } }
-        : { 0: { cellWidth: 14 }, 1: { cellWidth: 32 }, 2: { cellWidth: 'auto' }, 3: { cellWidth: 14, halign: 'center' }, 4: { cellWidth: 28, halign: 'right' }, 5: { cellWidth: 32, halign: 'right' } };
+        const matColWidths = { 
+            0: { cellWidth: 14 }, 
+            1: { cellWidth: 32 }, 
+            2: { cellWidth: 'auto' }, 
+            3: { cellWidth: 14, halign: 'center' }, 
+            4: { cellWidth: 28, halign: 'right' }, 
+            5: { cellWidth: 32, halign: 'right' } 
+        };
 
-    doc.autoTable({
-        startY: y,
-        head: tableHead,
-        body: tableRows,
-        margin: { top: 39, left: margin, right: margin, bottom: 20 },
-        styles: {
-            font: 'helvetica',
-            fontSize: 8.5,
-            cellPadding: 3,
-            lineColor: [180, 180, 180],
-            lineWidth: 0.2
-        },
-        headStyles: {
-            fillColor: navy,
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        columnStyles: colWidths,
-        didDrawPage: function (data) {
-            if (data.pageNumber > 1) {
-                drawHeader();
+        doc.autoTable({
+            startY: y,
+            head: matHead,
+            body: matRows,
+            margin: { top: 39, left: margin, right: margin, bottom: 20 },
+            styles: {
+                font: 'helvetica',
+                fontSize: 8.5,
+                cellPadding: 3,
+                lineColor: [180, 180, 180],
+                lineWidth: 0.2
+            },
+            headStyles: {
+                fillColor: navy,
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: matColWidths,
+            didDrawPage: function (pageData) {
+                if (pageData.pageNumber > 1) {
+                    drawHeader();
+                }
             }
-        }
-    });
+        });
 
-    y = doc.previousAutoTable.finalY + 6;
+        y = doc.previousAutoTable.finalY + 6;
+    }
 
-    // Subtotal & GST Calculation Breakdown
+    // Subtotal & GST Calculation Breakdown across ALL items
     const subtotal = data.items.reduce((s, i) => s + ((i.qty || 0) * (i.unitPrice || 0)), 0);
     let gstAmt = 0;
     let totalAmt = subtotal;
@@ -298,28 +373,28 @@ function generateQuotePDF(data) {
         totalAmt = subtotal;
     }
 
-    if (data.gstMode !== 'none') {
-        checkPageBreak(25);
-        const sumX = pageWidth - margin - 80;
-        setFont('normal', 9);
-        setColor(black);
-        doc.text(`Subtotal:`, sumX, y);
-        doc.text(`₹ ${fmtMoney(subtotal)}`, pageWidth - margin, y, { align: 'right' });
-        y += 5;
+    checkPageBreak(25);
+    const sumX = pageWidth - margin - 80;
+    setFont('normal', 9);
+    setColor(black);
+    doc.text(`Subtotal Amount:`, sumX, y);
+    doc.text(`₹ ${fmtMoney(subtotal)}`, pageWidth - margin, y, { align: 'right' });
+    y += 5;
 
+    if (data.gstMode !== 'none') {
         doc.text(`GST (18%):`, sumX, y);
         doc.text(`₹ ${fmtMoney(gstAmt)}`, pageWidth - margin, y, { align: 'right' });
         y += 5;
-
-        setFont('bold', 10);
-        setColor(navy);
-        doc.text(`Total Amount:`, sumX, y);
-        doc.text(`₹ ${fmtMoney(totalAmt)}`, pageWidth - margin, y, { align: 'right' });
-        y += 8;
     }
 
-    // ================= PROJECT MODE COMPLIANCE & DEVIATION =================
-    if (data.mode === 'project' && data.complianceText) {
+    setFont('bold', 10);
+    setColor(navy);
+    doc.text(`Total Amount:`, sumX, y);
+    doc.text(`₹ ${fmtMoney(totalAmt)}`, pageWidth - margin, y, { align: 'right' });
+    y += 8;
+
+    // ================= COMPLIANCE & DEVIATION =================
+    if ((hasProject || data.mode === 'project') && data.complianceText) {
         checkPageBreak(25);
         setFont('bold', 10.5);
         setColor(navy);
@@ -385,40 +460,60 @@ function generateQuotePDF(data) {
     }
 
     // ================= SIGN-OFF & REGARDS =================
-    checkPageBreak(30);
+    checkPageBreak(65);
 
     setFont('bold', 9.5);
     setColor(black);
     doc.text('PO shall be address to:', margin, y);
     y += 5;
 
-    setFont('normal', 9);
+    setFont('bold', 9.5);
     doc.text(data.signatoryCompany || 'SensoTech Design and Automation', margin, y);
     y += 4.5;
+    setFont('normal', 9);
     doc.text('No 20, Suprabath Nagar, Karihobanahalli, Thigalaraplya', margin, y);
     y += 4.5;
-    doc.text('Peenya Industrial Area, Bengaluru - 560058', margin, y);
+    doc.text('Peenya Industrial Area', margin, y);
     y += 4.5;
+    doc.text('Bengaluru – 560058', margin, y);
+    y += 6;
+
     if (data.signatoryEmailGst) {
+        setFont('bold', 9.5);
+        setColor(navy);
         doc.text(data.signatoryEmailGst, margin, y);
         y += 6;
     }
 
-    y += 4;
-    setFont('bold', 9.5);
-    doc.text('Thank You.', margin, y);
-    y += 5;
-
     setFont('normal', 9);
+    setColor(black);
+    doc.text('Thank You.', margin, y);
+    y += 6;
+
+    setFont('bold', 9.5);
     doc.text('Best Regards,', margin, y);
     y += 4.5;
-    setFont('bold', 9.5);
     doc.text(data.signatoryName || 'Bapu Patil', margin, y);
     y += 4.5;
     if (data.signatoryMobile) {
         setFont('normal', 9);
         doc.text(`Mob: ${data.signatoryMobile}`, margin, y);
         y += 5;
+    }
+
+    // Official Seal Image
+    y += 2;
+    checkPageBreak(36);
+    if (!stda_seal_base64 && sealImg.complete && sealImg.naturalWidth > 0) {
+        stda_seal_base64 = getBase64FromImg(sealImg);
+    }
+    if (stda_seal_base64) {
+        try {
+            doc.addImage(stda_seal_base64, 'PNG', margin, y, 32, 32);
+            y += 34;
+        } catch (e) {
+            console.warn('Could not add seal image to PDF:', e);
+        }
     }
 
     // ================= FOOTER ON ALL PAGES =================

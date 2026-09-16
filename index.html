@@ -118,29 +118,16 @@
         <section class="section-card" id="section-costing">
             <div class="section-header">
                 <div class="section-icon amber">💰</div>
-                <h2 id="costing-section-title">2. Costing & BOM Breakdown</h2>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-add-item">
-                    ➕ Add Item
-                </button>
+                <h2 id="costing-section-title">2. Costing & Breakdown</h2>
+                <div class="header-item-actions">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-item">
+                        ➕ Add Item
+                    </button>
+                </div>
             </div>
             
-            <div class="table-responsive">
-                <table class="items-table" id="items-table">
-                    <thead>
-                        <tr>
-                            <th class="col-sl">SL</th>
-                            <th class="col-part" id="th-part-no">Part No</th>
-                            <th class="col-desc">Description / Scope</th>
-                            <th class="col-qty">Qty</th>
-                            <th class="col-price">Unit Price (₹)</th>
-                            <th class="col-total">Total Price (₹)</th>
-                            <th class="col-actions">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="items-table-body">
-                        <!-- Dynamic rows rendered by JS -->
-                    </tbody>
-                </table>
+            <div id="costing-groups-container">
+                <!-- Grouped tables dynamically rendered by renderItemRows() in app.js -->
             </div>
 
             <!-- Total Calculation Summary -->
@@ -293,6 +280,35 @@
         <button class="btn btn-primary btn-lg" id="btn-download-pdf">
             📥 Download PDF
         </button>
+    </div>
+
+    <!-- ============ ADD ITEM TYPE SELECTION MODAL ============ -->
+    <div class="modal-overlay" id="modal-add-item-type">
+        <div class="modal-container modal-sm">
+            <div class="modal-header">
+                <h3>➕ Add Item - Select Type</h3>
+                <button class="modal-close" id="close-add-item-modal">✕</button>
+            </div>
+            <div class="modal-body item-type-selector-body">
+                <p class="selector-subtitle">Which type of item would you like to add to this quotation?</p>
+                <div class="item-type-options">
+                    <button type="button" class="item-type-card" id="btn-add-type-project">
+                        <div class="type-icon">🏗️</div>
+                        <div class="type-info">
+                            <span class="type-title">Project Quotation Item</span>
+                            <span class="type-desc">For custom scope of work, machine assemblies, setup costs & major project scope.</span>
+                        </div>
+                    </button>
+                    <button type="button" class="item-type-card" id="btn-add-type-materials">
+                        <div class="type-icon">📦</div>
+                        <div class="type-info">
+                            <span class="type-title">Materials List Item</span>
+                            <span class="type-desc">For individual components, hardware, spares & items with Part Numbers / specs.</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ============ PDF PREVIEW MODAL ============ -->
