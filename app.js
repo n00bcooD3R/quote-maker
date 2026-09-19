@@ -5,6 +5,7 @@
 // Application State
 const state = {
     mode: 'project', // 'project' | 'materials'
+    promptMode: 'auto', // 'auto' | 'project' | 'materials'
     items: [],
     clients: [],
     selectedClient: null
@@ -86,9 +87,97 @@ function bindEvents() {
     document.getElementById('btn-mode-project').addEventListener('click', () => setMode('project'));
     document.getElementById('btn-mode-materials').addEventListener('click', () => setMode('materials'));
 
-    // Sample Presets
+    // Sample Presets & Upload / Export
     document.getElementById('btn-load-project-sample').addEventListener('click', loadProjectSample);
     document.getElementById('btn-load-materials-sample').addEventListener('click', loadMaterialsSample);
+    
+    const btnUpload = document.getElementById('btn-upload-quotation');
+    if (btnUpload) btnUpload.addEventListener('click', openUploadModal);
+
+    const btnCloseUpload = document.getElementById('close-upload-modal');
+    if (btnCloseUpload) btnCloseUpload.addEventListener('click', closeUploadModal);
+
+    const btnExport = document.getElementById('btn-export-json');
+    if (btnExport) btnExport.addEventListener('click', exportQuotationJSON);
+
+    const uploadModal = document.getElementById('modal-upload-quotation');
+    if (uploadModal) {
+        uploadModal.addEventListener('click', (e) => {
+            if (e.target === uploadModal) closeUploadModal();
+        });
+    }
+
+    // Prompt Mode Selector buttons inside Upload Modal
+    const btnPromptAuto = document.getElementById('prompt-mode-auto');
+    const btnPromptProject = document.getElementById('prompt-mode-project');
+    const btnPromptMaterials = document.getElementById('prompt-mode-materials');
+
+    function setPromptMode(mode) {
+        state.promptMode = mode;
+        [btnPromptAuto, btnPromptProject, btnPromptMaterials].forEach(b => {
+            if (b) b.classList.remove('active');
+        });
+        if (mode === 'auto' && btnPromptAuto) btnPromptAuto.classList.add('active');
+        if (mode === 'project' && btnPromptProject) btnPromptProject.classList.add('active');
+        if (mode === 'materials' && btnPromptMaterials) btnPromptMaterials.classList.add('active');
+    }
+
+    if (btnPromptAuto) btnPromptAuto.addEventListener('click', () => setPromptMode('auto'));
+    if (btnPromptProject) btnPromptProject.addEventListener('click', () => setPromptMode('project'));
+    if (btnPromptMaterials) btnPromptMaterials.addEventListener('click', () => setPromptMode('materials'));
+
+    // Dropzone & File Input Handlers
+    const dropzone = document.getElementById('file-dropzone');
+    const fileInput = document.getElementById('quotation-file-input');
+    const btnBrowse = document.getElementById('btn-browse-file');
+
+    if (btnBrowse && fileInput) {
+        btnBrowse.addEventListener('click', () => fileInput.click());
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleUploadedFile(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
+    }
+
+    if (dropzone) {
+        dropzone.addEventListener('click', (e) => {
+            if (e.target !== btnBrowse && fileInput) {
+                fileInput.click();
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files[0]) {
+                handleUploadedFile(files[0]);
+            }
+        });
+    }
+
+    const btnClearHist = document.getElementById('btn-clear-history');
+    if (btnClearHist) btnClearHist.addEventListener('click', clearSavedQuotesHistory);
 
     // Form Controls & Add Item Modal
     document.getElementById('btn-reset-form').addEventListener('click', resetForm);
@@ -660,6 +749,8 @@ function collectFormData() {
 // PDF Modal Controls
 async function generatePDF(preview = false) {
     const data = collectFormData();
+    saveQuoteToHistory(data);
+
     if (typeof window.generateQuotePDF !== 'function') {
         showToast('PDF Generator script not loaded', 'error');
         return;
@@ -690,4 +781,276 @@ async function generatePDF(preview = false) {
 function closePdfModal() {
     document.getElementById('modal-pdf-preview').classList.remove('active');
     document.getElementById('pdf-preview-frame').src = '';
+}
+
+// ===================== EXPORT, HISTORY & IMPORT =====================
+
+// Export Quotation Data as JSON File
+function exportQuotationJSON() {
+    const data = collectFormData();
+    saveQuoteToHistory(data);
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeRef = (data.quotationNo || 'Quotation').replace(/[\/\\?%*:|"<>]/g, '_');
+    a.download = `${safeRef}_Data.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Exported quotation data: ${a.download}`, 'success');
+}
+
+// LocalStorage Quotation History
+function getSavedQuotesHistory() {
+    try {
+        const stored = localStorage.getItem('stda_quote_history');
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveQuoteToHistory(data) {
+    if (!data || !data.quotationNo) return;
+    try {
+        let history = getSavedQuotesHistory();
+        history = history.filter(q => q.quotationNo !== data.quotationNo);
+        
+        const subtotal = (data.items || []).reduce((sum, i) => sum + ((i.qty || 0) * (i.unitPrice || 0)), 0);
+        let grandTotal = subtotal;
+        if (data.gstMode === 'extra_18') grandTotal = subtotal * 1.18;
+        
+        const entry = {
+            ...data,
+            savedAt: new Date().toLocaleString(),
+            itemCount: (data.items || []).length,
+            grandTotal: grandTotal
+        };
+        history.unshift(entry);
+        if (history.length > 20) history = history.slice(0, 20);
+        localStorage.setItem('stda_quote_history', JSON.stringify(history));
+    } catch (e) {
+        console.warn('Could not save quote to history:', e);
+    }
+}
+
+function deleteQuoteFromHistory(quotationNo) {
+    let history = getSavedQuotesHistory();
+    history = history.filter(q => q.quotationNo !== quotationNo);
+    localStorage.setItem('stda_quote_history', JSON.stringify(history));
+    renderSavedQuotesList();
+    showToast(`Removed quote ${quotationNo} from history`, 'info');
+}
+
+function clearSavedQuotesHistory() {
+    if (confirm('Are you sure you want to clear all saved quotes from history?')) {
+        localStorage.removeItem('stda_quote_history');
+        renderSavedQuotesList();
+        showToast('Cleared quotes history', 'info');
+    }
+}
+
+function renderSavedQuotesList() {
+    const container = document.getElementById('recent-quotes-list');
+    if (!container) return;
+    const history = getSavedQuotesHistory();
+
+    if (history.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">
+                No previously created quotes saved in browser history yet.<br>
+                Any quote previewed or downloaded will automatically appear here!
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = history.map(item => `
+        <div class="recent-quote-card">
+            <div class="quote-card-info">
+                <div class="quote-card-title">
+                    <span>${(item.mode === 'materials' ? '📦' : '🏗️')} ${escapeHtml(item.quotationNo)}</span>
+                    <span class="group-badge ${item.mode === 'materials' ? 'badge-materials' : 'badge-project'}">${item.mode === 'materials' ? 'Materials' : 'Project'}</span>
+                </div>
+                <div class="quote-card-meta">
+                    Customer: <strong>${escapeHtml(item.customerName || 'Valued Customer')}</strong> | ${item.itemCount || 0} items | ₹ ${formatINR(item.grandTotal || 0)}
+                    <br><span style="font-size: 11px; opacity: 0.7;">Saved: ${item.savedAt || ''}</span>
+                </div>
+            </div>
+            <div class="quote-card-actions">
+                <button type="button" class="btn btn-primary btn-sm btn-load-hist-item" data-ref="${escapeHtml(item.quotationNo)}">
+                    ✏️ Load & Edit
+                </button>
+                <button type="button" class="btn btn-danger btn-sm btn-del-hist-item" data-ref="${escapeHtml(item.quotationNo)}" title="Delete">
+                    ✕
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.btn-load-hist-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ref = btn.getAttribute('data-ref');
+            const quote = history.find(q => q.quotationNo === ref);
+            if (quote) {
+                loadQuotationData(quote, state.promptMode);
+                closeUploadModal();
+            }
+        });
+    });
+
+    container.querySelectorAll('.btn-del-hist-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const ref = btn.getAttribute('data-ref');
+            deleteQuoteFromHistory(ref);
+        });
+    });
+}
+
+// Modal Open & Close Controls
+function openUploadModal() {
+    const modal = document.getElementById('modal-upload-quotation');
+    if (modal) {
+        renderSavedQuotesList();
+        modal.classList.add('active');
+    }
+}
+
+function closeUploadModal() {
+    const modal = document.getElementById('modal-upload-quotation');
+    if (modal) modal.classList.remove('active');
+}
+
+// Load Quotation Data into Editor & Form
+function loadQuotationData(data, overridePromptMode = 'auto') {
+    if (!data) return;
+
+    let targetMode = data.mode || 'project';
+    if (overridePromptMode === 'project') targetMode = 'project';
+    else if (overridePromptMode === 'materials') targetMode = 'materials';
+
+    setMode(targetMode);
+
+    // Populate Fields
+    document.getElementById('quotation-no').value = data.quotationNo || '';
+    document.getElementById('quotation-date').value = data.date || getDefaultDate();
+    document.getElementById('kind-attention').value = data.kindAttention || '';
+    document.getElementById('customer-name').value = data.customerName || '';
+    document.getElementById('customer-address').value = data.customerAddress || '';
+    document.getElementById('quotation-subject').value = data.subject || '';
+    document.getElementById('quotation-salutation').value = data.salutation || 'Dear Sir,';
+    document.getElementById('opening-text').value = data.openingText || '';
+    document.getElementById('technical-proposal-text').value = data.technicalProposalText || '';
+    document.getElementById('compliance-text').value = data.complianceText || '';
+    document.getElementById('terms-payment').value = data.termsPayment || '';
+    document.getElementById('terms-taxes').value = data.termsTaxes || '';
+    document.getElementById('terms-freight').value = data.termsFreight || '';
+    document.getElementById('terms-delivery').value = data.termsDelivery || '';
+    document.getElementById('terms-validity').value = data.termsValidity || '';
+    document.getElementById('terms-commissioning').value = data.termsCommissioning || '';
+    document.getElementById('bank-name').value = data.bankName || '';
+    document.getElementById('bank-branch').value = data.bankBranch || '';
+    document.getElementById('bank-account').value = data.bankAccount || '';
+    document.getElementById('bank-ifsc').value = data.bankIfsc || '';
+    document.getElementById('signatory-name').value = data.signatoryName || 'Bapu Patil';
+    document.getElementById('signatory-company').value = data.signatoryCompany || 'SensoTech Design and Automation';
+    document.getElementById('signatory-mobile').value = data.signatoryMobile || '';
+    document.getElementById('signatory-email-gst').value = data.signatoryEmailGst || '';
+    
+    if (data.gstMode) {
+        document.getElementById('gst-mode').value = data.gstMode;
+    }
+
+    // Populate Items
+    if (Array.isArray(data.items) && data.items.length > 0) {
+        state.items = data.items.map(item => ({
+            id: item.id || Date.now() + Math.random().toString(36).substr(2, 4),
+            type: item.type || (targetMode === 'materials' ? 'materials' : 'project'),
+            partNo: item.partNo || '',
+            description: item.description || '',
+            qty: item.qty !== undefined ? item.qty : 1,
+            unitPrice: item.unitPrice !== undefined ? item.unitPrice : 0
+        }));
+    } else {
+        state.items = [];
+        addItemRow({}, targetMode);
+    }
+
+    renderItemRows();
+    calculateTotals();
+    showToast(`Loaded quotation: ${data.quotationNo || 'Quote'}`, 'success');
+}
+
+// Uploaded File Processor (.pdf / .json)
+function handleUploadedFile(file) {
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isPdf = fileName.endsWith('.pdf');
+    const isJson = fileName.endsWith('.json');
+
+    if (!isPdf && !isJson) {
+        showToast('Please upload a .pdf or .json quotation file', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+
+    if (isJson) {
+        reader.onload = (e) => {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                loadQuotationData(parsed, state.promptMode);
+                closeUploadModal();
+            } catch (err) {
+                console.error(err);
+                showToast('Invalid JSON quotation file format', 'error');
+            }
+        };
+        reader.readAsText(file);
+    } else if (isPdf) {
+        reader.onload = (e) => {
+            try {
+                const content = e.target.result;
+                const keywordIndex = content.indexOf('STDA_QUOTE_DATA:');
+                if (keywordIndex !== -1) {
+                    const startPos = keywordIndex + 'STDA_QUOTE_DATA:'.length;
+                    let rawBase64 = content.substr(startPos, 15000);
+                    const endParen = rawBase64.indexOf(')');
+                    if (endParen !== -1) {
+                        rawBase64 = rawBase64.substring(0, endParen);
+                    } else {
+                        rawBase64 = rawBase64.split(/[\s\r\n>]/)[0];
+                    }
+
+                    const jsonString = decodeURIComponent(atob(rawBase64.trim()));
+                    const quoteData = JSON.parse(jsonString);
+                    loadQuotationData(quoteData, state.promptMode);
+                    closeUploadModal();
+                    showToast(`Successfully extracted quote: ${quoteData.quotationNo}`, 'success');
+                    return;
+                }
+
+                // Fallback text parsing for legacy PDFs without embedded metadata
+                showToast('Loaded PDF file. Extracting available text from legacy PDF...', 'info');
+                const textStr = content;
+                const refMatch = textStr.match(/STDA\/[0-9\/A-Z\-]+/i);
+                if (refMatch) document.getElementById('quotation-no').value = refMatch[0];
+                
+                const custMatch = textStr.match(/M\/s\s+[^\r\n]+/i);
+                if (custMatch) document.getElementById('customer-name').value = custMatch[0];
+                
+                closeUploadModal();
+                showToast('Imported basic PDF info. Please review details.', 'info');
+            } catch (err) {
+                console.error('PDF Parsing Error:', err);
+                showToast('Could not extract quotation data from PDF file', 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+    }
 }

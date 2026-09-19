@@ -21,6 +21,9 @@
             </div>
         </div>
         <div class="header-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-export-json" title="Export Quotation Data as JSON file">
+                💾 Export Data
+            </button>
             <button class="btn btn-ghost btn-sm" id="btn-reset-form" title="Reset Form">
                 🔄 Clear
             </button>
@@ -44,6 +47,9 @@
                 </div>
             </div>
             <div class="preset-buttons">
+                <button type="button" class="btn btn-sky btn-sm" id="btn-upload-quotation" title="Upload previously made PDF or pick saved quote">
+                    📂 Load / Upload Quote
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-load-project-sample">
                     📋 Load Project Sample
                 </button>
@@ -307,6 +313,59 @@
                         </div>
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ UPLOAD / LOAD QUOTATION MODAL ============ -->
+    <div class="modal-overlay" id="modal-upload-quotation">
+        <div class="modal-container modal-md">
+            <div class="modal-header">
+                <h3>📂 Upload or Load Previously Made Quotation</h3>
+                <button class="modal-close" id="close-upload-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- Quotation Type Prompt -->
+                <div class="upload-mode-prompt">
+                    <label class="prompt-label">Select Target Quotation Type for Editor:</label>
+                    <div class="mode-prompt-buttons">
+                        <button type="button" class="btn-prompt-mode active" data-prompt-mode="auto" id="prompt-mode-auto">
+                            ✨ Auto-Detect
+                        </button>
+                        <button type="button" class="btn-prompt-mode" data-prompt-mode="project" id="prompt-mode-project">
+                            🏗️ Project Quotation
+                        </button>
+                        <button type="button" class="btn-prompt-mode" data-prompt-mode="materials" id="prompt-mode-materials">
+                            📦 Materials List
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div class="file-dropzone" id="file-dropzone">
+                    <input type="file" id="quotation-file-input" accept=".pdf,.json" style="display: none;">
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">📄</div>
+                        <h4>Upload Previously Made PDF or Data File</h4>
+                        <p>Drag & drop your previous <strong>.pdf</strong> or <strong>.json</strong> quotation file here, or click below to browse.</p>
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-browse-file">
+                            📁 Select File (.pdf / .json)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Saved Quotes History -->
+                <div class="recent-quotes-section">
+                    <div class="recent-header">
+                        <h4>🕒 Previously Made Quotes Saved in History</h4>
+                        <button type="button" class="btn-text-danger" id="btn-clear-history">Clear History</button>
+                    </div>
+                    <div class="recent-quotes-list" id="recent-quotes-list">
+                        <!-- Populated dynamically by app.js -->
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
