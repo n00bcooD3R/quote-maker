@@ -768,7 +768,23 @@ async function generatePDF(preview = false) {
             iframe.src = blobUrl;
             document.getElementById('modal-pdf-preview').classList.add('active');
         } else {
-            const filename = `${data.quotationNo.replace(/[\/\\?%*:|"<>]/g, '_')}_Quotation.pdf`;
+            // Generate filename using Company Name from "To" field and live Date/Time of download button press
+            let companyName = (data.customerName || '').trim();
+            if (!companyName || companyName === 'Valued Customer') {
+                companyName = 'Quotation';
+            }
+            const safeCompanyName = companyName.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
+
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const secs = String(now.getSeconds()).padStart(2, '0');
+            const timestamp = `${day}-${month}-${year}_${hours}-${mins}-${secs}`;
+
+            const filename = `${safeCompanyName}_${timestamp}.pdf`;
             doc.save(filename);
             showToast(`Downloaded: ${filename}`, 'success');
         }
