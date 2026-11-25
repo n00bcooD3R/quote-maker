@@ -286,6 +286,12 @@
         <button class="btn btn-primary btn-lg" id="btn-download-pdf">
             📥 Download PDF
         </button>
+        <button class="btn btn-cloud btn-lg" id="btn-save-cloud" title="Save PDF directly to OneDrive cloud folder">
+            ☁️ Save to Cloud
+        </button>
+        <button class="btn btn-secondary btn-lg btn-icon-only" id="btn-cloud-settings" title="Cloud Folder Settings" aria-label="Cloud Folder Settings">
+            ⚙️
+        </button>
     </div>
 
     <!-- ============ ADD ITEM TYPE SELECTION MODAL ============ -->
@@ -366,6 +372,71 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ CLOUD SAVE MODAL ============ -->
+    <div class="modal-overlay" id="modal-cloud-save">
+        <div class="modal-container modal-md">
+            <div class="modal-header">
+                <h3>☁️ Save Quotation PDF to Cloud (OneDrive)</h3>
+                <button class="modal-close" id="close-cloud-modal">✕</button>
+            </div>
+            <div class="modal-body cloud-modal-body">
+                <div class="cloud-target-box">
+                    <div class="cloud-target-label">Target OneDrive Folder:</div>
+                    <a href="https://1drv.ms/f/c/d7c8fe5c9981bbe2/IgBxlKRMMsB4T6wj_0e8Ixv9AY4kiw5XkmZFTOurHG_KwzU?e=wOeGRD" target="_blank" rel="noopener noreferrer" class="cloud-target-link" id="cloud-target-link">
+                        🔗 Open Shared OneDrive Folder ↗
+                    </a>
+                </div>
+
+                <div class="cloud-status-row" id="cloud-folder-status">
+                    <!-- Dynamically updated by app.js -->
+                </div>
+
+                <div class="cloud-options-list">
+                    <div class="cloud-option-card" id="cloud-option-sync">
+                        <div class="cloud-option-header">
+                            <span class="cloud-option-icon">📁</span>
+                            <div>
+                                <div class="cloud-option-title">Direct Save via Local OneDrive Sync Folder</div>
+                                <div class="cloud-option-desc" id="cloud-sync-desc">
+                                    Link your PC's synced OneDrive folder once (Chrome/Edge on HTTPS or localhost). Every click on <strong>Save to Cloud</strong> will write the PDF straight into it automatically.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cloud-option-actions">
+                            <button type="button" class="btn btn-cloud btn-sm" id="btn-cloud-link-save">
+                                📁 Link OneDrive Folder & Save
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btn-cloud-unlink" style="display: none;">
+                                ✕ Unlink Folder
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="cloud-option-card">
+                        <div class="cloud-option-header">
+                            <span class="cloud-option-icon">🌐</span>
+                            <div>
+                                <div class="cloud-option-title">Download PDF & Open OneDrive Folder</div>
+                                <div class="cloud-option-desc">
+                                    Works everywhere (including local <code>file://</code>, mobile, and all browsers). Downloads the PDF and opens the OneDrive folder tab so you can drop it in.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cloud-option-actions cloud-option-actions-between">
+                            <label class="cloud-remember-label">
+                                <input type="checkbox" id="chk-cloud-always-open">
+                                <span>Always use this on Save to Cloud</span>
+                            </label>
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-cloud-download-open">
+                                📥 Download & Open Folder
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

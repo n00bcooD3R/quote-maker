@@ -256,15 +256,47 @@ function bindEvents() {
         }
     });
 
-    // PDF Actions
+    // PDF & Cloud Actions
     document.getElementById('btn-preview-pdf').addEventListener('click', () => generatePDF(true));
     document.getElementById('btn-download-pdf').addEventListener('click', () => generatePDF(false));
+    document.getElementById('btn-save-cloud').addEventListener('click', handleSaveToCloudClick);
+    document.getElementById('btn-cloud-settings').addEventListener('click', () => openCloudSaveModal(false));
     document.getElementById('close-pdf-modal').addEventListener('click', closePdfModal);
 
     const modal = document.getElementById('modal-pdf-preview');
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closePdfModal();
     });
+
+    // Cloud Save Modal Controls
+    const cloudModal = document.getElementById('modal-cloud-save');
+    const closeCloudBtn = document.getElementById('close-cloud-modal');
+    if (closeCloudBtn) closeCloudBtn.addEventListener('click', closeCloudSaveModal);
+    if (cloudModal) {
+        cloudModal.addEventListener('click', (e) => {
+            if (e.target === cloudModal) closeCloudSaveModal();
+        });
+    }
+
+    const btnCloudLinkSave = document.getElementById('btn-cloud-link-save');
+    if (btnCloudLinkSave) btnCloudLinkSave.addEventListener('click', linkOneDriveFolderAndSave);
+
+    const btnCloudUnlink = document.getElementById('btn-cloud-unlink');
+    if (btnCloudUnlink) btnCloudUnlink.addEventListener('click', unlinkOneDriveFolder);
+
+    const btnCloudDownloadOpen = document.getElementById('btn-cloud-download-open');
+    if (btnCloudDownloadOpen) btnCloudDownloadOpen.addEventListener('click', handleCloudDownloadAndOpenClick);
+
+    const chkAlwaysOpen = document.getElementById('chk-cloud-always-open');
+    if (chkAlwaysOpen) {
+        chkAlwaysOpen.addEventListener('change', (e) => {
+            try {
+                localStorage.setItem(CLOUD_ALWAYS_OPEN_KEY, e.target.checked ? '1' : '0');
+            } catch {
+                // Ignore storage errors in restricted contexts
+            }
+        });
+    }
 }
 
 // Mode Switcher Logic
@@ -746,48 +778,61 @@ function collectFormData() {
     };
 }
 
-// PDF Modal Controls
-async function generatePDF(preview = false) {
+// Build standardized PDF filename: [Quotation No]_[Company Name]_[Date Time].pdf
+function buildPdfFilename(data) {
+    const rawQuoteNo = (data.quotationNo || '').trim();
+    const safeQuoteNo = rawQuoteNo ? rawQuoteNo.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim() : 'Quote';
+
+    let companyName = (data.customerName || '').trim();
+    if (!companyName || companyName === 'Valued Customer') {
+        companyName = 'Customer';
+    }
+    const safeCompanyName = companyName.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
+
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    const timestamp = `${day}-${month}-${year}_${hours}-${mins}-${secs}`;
+
+    return `${safeQuoteNo}_${safeCompanyName}_${timestamp}.pdf`;
+}
+
+// Prepare jsPDF document & metadata
+async function prepareQuotePDF() {
     const data = collectFormData();
     saveQuoteToHistory(data);
 
     if (typeof window.generateQuotePDF !== 'function') {
         showToast('PDF Generator script not loaded', 'error');
-        return;
+        return null;
     }
-    
+
+    if (typeof window.loadJsPDFScripts === 'function') {
+        await window.loadJsPDFScripts();
+    }
+
+    const doc = window.generateQuotePDF(data);
+    const filename = buildPdfFilename(data);
+    return { doc, data, filename };
+}
+
+// PDF Modal Controls
+async function generatePDF(preview = false) {
     try {
-        if (typeof window.loadJsPDFScripts === 'function') {
-            await window.loadJsPDFScripts();
-        }
-        const doc = window.generateQuotePDF(data);
-        
+        const result = await prepareQuotePDF();
+        if (!result) return;
+        const { doc, filename } = result;
+
         if (preview) {
             const blobUrl = doc.output('bloburl');
             const iframe = document.getElementById('pdf-preview-frame');
             iframe.src = blobUrl;
             document.getElementById('modal-pdf-preview').classList.add('active');
         } else {
-            // Generate filename: [Quotation No]_[Company Name]_[Date Time].pdf
-            let rawQuoteNo = (data.quotationNo || '').trim();
-            const safeQuoteNo = rawQuoteNo ? rawQuoteNo.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim() : 'Quote';
-
-            let companyName = (data.customerName || '').trim();
-            if (!companyName || companyName === 'Valued Customer') {
-                companyName = 'Customer';
-            }
-            const safeCompanyName = companyName.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, ' ').trim();
-
-            const now = new Date();
-            const day = String(now.getDate()).padStart(2, '0');
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const year = now.getFullYear();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const mins = String(now.getMinutes()).padStart(2, '0');
-            const secs = String(now.getSeconds()).padStart(2, '0');
-            const timestamp = `${day}-${month}-${year}_${hours}-${mins}-${secs}`;
-
-            const filename = `${safeQuoteNo}_${safeCompanyName}_${timestamp}.pdf`;
             doc.save(filename);
             showToast(`Downloaded: ${filename}`, 'success');
         }
@@ -800,6 +845,269 @@ async function generatePDF(preview = false) {
 function closePdfModal() {
     document.getElementById('modal-pdf-preview').classList.remove('active');
     document.getElementById('pdf-preview-frame').src = '';
+}
+
+// ===================== CLOUD SAVE (ONEDRIVE) =====================
+
+const ONEDRIVE_FOLDER_URL = 'https://1drv.ms/f/c/d7c8fe5c9981bbe2/IgBxlKRMMsB4T6wj_0e8Ixv9AY4kiw5XkmZFTOurHG_KwzU?e=wOeGRD';
+const CLOUD_DB_NAME = 'stda_quote_maker_db';
+const CLOUD_STORE_NAME = 'settings';
+const CLOUD_DIR_HANDLE_KEY = 'onedrive_dir_handle';
+const CLOUD_ALWAYS_OPEN_KEY = 'stda_cloud_always_open';
+let pendingCloudSave = false;
+
+function supportsDirectoryPicker() {
+    return typeof window.showDirectoryPicker === 'function' && window.isSecureContext;
+}
+
+function openCloudDb() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            reject(new Error('IndexedDB not supported'));
+            return;
+        }
+        const req = indexedDB.open(CLOUD_DB_NAME, 1);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(CLOUD_STORE_NAME)) {
+                db.createObjectStore(CLOUD_STORE_NAME);
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function getSavedOneDriveDirHandle() {
+    try {
+        const db = await openCloudDb();
+        return await new Promise((resolve) => {
+            const tx = db.transaction(CLOUD_STORE_NAME, 'readonly');
+            const store = tx.objectStore(CLOUD_STORE_NAME);
+            const req = store.get(CLOUD_DIR_HANDLE_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch {
+        return null;
+    }
+}
+
+async function saveOneDriveDirHandle(handle) {
+    try {
+        const db = await openCloudDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(CLOUD_STORE_NAME, 'readwrite');
+            const store = tx.objectStore(CLOUD_STORE_NAME);
+            const req = store.put(handle, CLOUD_DIR_HANDLE_KEY);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    } catch (err) {
+        console.warn('Could not persist folder handle:', err);
+    }
+}
+
+async function clearSavedOneDriveDirHandle() {
+    try {
+        const db = await openCloudDb();
+        await new Promise((resolve) => {
+            const tx = db.transaction(CLOUD_STORE_NAME, 'readwrite');
+            const store = tx.objectStore(CLOUD_STORE_NAME);
+            const req = store.delete(CLOUD_DIR_HANDLE_KEY);
+            req.onsuccess = () => resolve();
+            req.onerror = () => resolve();
+        });
+    } catch {
+        // Ignore cleanup errors
+    }
+}
+
+async function ensureDirectoryWritePermission(dirHandle) {
+    let permission = await dirHandle.queryPermission({ mode: 'readwrite' });
+    if (permission !== 'granted') {
+        permission = await dirHandle.requestPermission({ mode: 'readwrite' });
+    }
+    return permission === 'granted';
+}
+
+async function writePdfToDirectoryHandle(dirHandle, filename, pdfBlob) {
+    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(pdfBlob);
+    await writable.close();
+}
+
+async function savePreparedPdfToLinkedFolder(dirHandle) {
+    const granted = await ensureDirectoryWritePermission(dirHandle);
+    if (!granted) {
+        showToast('Folder write permission was denied', 'error');
+        return false;
+    }
+    const result = await prepareQuotePDF();
+    if (!result) return false;
+    const { doc, filename } = result;
+    const pdfBlob = doc.output('blob');
+    await writePdfToDirectoryHandle(dirHandle, filename, pdfBlob);
+    showToast(`☁️ Saved to OneDrive folder (${dirHandle.name}): ${filename}`, 'success');
+    return true;
+}
+
+async function handleSaveToCloudClick() {
+    if (supportsDirectoryPicker()) {
+        const savedHandle = await getSavedOneDriveDirHandle();
+        if (savedHandle) {
+            try {
+                const saved = await savePreparedPdfToLinkedFolder(savedHandle);
+                if (saved) return;
+            } catch (err) {
+                console.warn('Direct write to linked folder failed:', err);
+                showToast('Could not access previously linked folder. Please re-link or download.', 'info');
+            }
+        }
+    }
+
+    try {
+        if (localStorage.getItem(CLOUD_ALWAYS_OPEN_KEY) === '1') {
+            await downloadAndOpenOneDriveFolder();
+            return;
+        }
+    } catch {
+        // Ignore storage errors
+    }
+
+    await openCloudSaveModal(true);
+}
+
+async function openCloudSaveModal(shouldSaveOnAction = false) {
+    pendingCloudSave = shouldSaveOnAction;
+    const modal = document.getElementById('modal-cloud-save');
+    if (!modal) return;
+
+    await refreshCloudModalUI();
+    modal.classList.add('active');
+}
+
+function closeCloudSaveModal() {
+    const modal = document.getElementById('modal-cloud-save');
+    if (modal) modal.classList.remove('active');
+    pendingCloudSave = false;
+}
+
+async function refreshCloudModalUI() {
+    const statusEl = document.getElementById('cloud-folder-status');
+    const syncCard = document.getElementById('cloud-option-sync');
+    const syncDesc = document.getElementById('cloud-sync-desc');
+    const btnLinkSave = document.getElementById('btn-cloud-link-save');
+    const btnUnlink = document.getElementById('btn-cloud-unlink');
+    const chkAlwaysOpen = document.getElementById('chk-cloud-always-open');
+
+    if (chkAlwaysOpen) {
+        try {
+            chkAlwaysOpen.checked = localStorage.getItem(CLOUD_ALWAYS_OPEN_KEY) === '1';
+        } catch {
+            chkAlwaysOpen.checked = false;
+        }
+    }
+
+    if (!supportsDirectoryPicker()) {
+        if (statusEl) {
+            statusEl.className = 'cloud-status-row';
+            statusEl.textContent = window.location.protocol === 'file:'
+                ? 'ℹ️ Running from local file:// — direct folder linking is disabled by browser security. Use "Download & Open Folder", or open via GitHub Pages (HTTPS) to link your OneDrive folder.'
+                : 'ℹ️ Direct folder linking is only supported in desktop Chrome/Edge over HTTPS. Use "Download & Open Folder" below.';
+        }
+        if (syncCard) syncCard.classList.add('disabled');
+        if (btnLinkSave) btnLinkSave.disabled = true;
+        if (btnUnlink) btnUnlink.style.display = 'none';
+        return;
+    }
+
+    if (syncCard) syncCard.classList.remove('disabled');
+    if (btnLinkSave) btnLinkSave.disabled = false;
+    if (syncDesc) {
+        syncDesc.innerHTML = 'Link your PC\'s synced OneDrive folder once (Chrome/Edge on HTTPS or localhost). Every click on <strong>Save to Cloud</strong> will write the PDF straight into it automatically.';
+    }
+
+    const savedHandle = await getSavedOneDriveDirHandle();
+    if (savedHandle) {
+        if (statusEl) {
+            statusEl.className = 'cloud-status-row linked';
+            statusEl.textContent = `✅ Linked OneDrive Sync Folder: "${savedHandle.name}" — clicking Save to Cloud writes PDFs directly here.`;
+        }
+        if (btnLinkSave) btnLinkSave.textContent = pendingCloudSave ? '📁 Change Folder & Save' : '📁 Change Linked Folder';
+        if (btnUnlink) btnUnlink.style.display = 'inline-flex';
+    } else {
+        if (statusEl) {
+            statusEl.className = 'cloud-status-row';
+            statusEl.textContent = '☁️ No local OneDrive sync folder linked yet.';
+        }
+        if (btnLinkSave) btnLinkSave.textContent = pendingCloudSave ? '📁 Link OneDrive Folder & Save' : '📁 Link OneDrive Folder';
+        if (btnUnlink) btnUnlink.style.display = 'none';
+    }
+}
+
+async function linkOneDriveFolderAndSave() {
+    if (!supportsDirectoryPicker()) {
+        showToast('Direct folder linking requires Chrome/Edge over HTTPS or localhost', 'error');
+        return;
+    }
+
+    try {
+        const dirHandle = await window.showDirectoryPicker({
+            id: 'stda-onedrive-folder',
+            mode: 'readwrite'
+        });
+        await saveOneDriveDirHandle(dirHandle);
+        try {
+            localStorage.setItem(CLOUD_ALWAYS_OPEN_KEY, '0');
+        } catch {
+            // Ignore storage errors
+        }
+
+        const shouldSaveNow = pendingCloudSave;
+        closeCloudSaveModal();
+
+        if (shouldSaveNow) {
+            await savePreparedPdfToLinkedFolder(dirHandle);
+        } else {
+            showToast(`✅ Linked OneDrive folder: ${dirHandle.name}`, 'success');
+        }
+    } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.error('Folder link error:', err);
+        showToast('Could not link folder. Please try again.', 'error');
+    }
+}
+
+async function unlinkOneDriveFolder() {
+    await clearSavedOneDriveDirHandle();
+    await refreshCloudModalUI();
+    showToast('Unlinked OneDrive sync folder', 'info');
+}
+
+async function handleCloudDownloadAndOpenClick() {
+    closeCloudSaveModal();
+    await downloadAndOpenOneDriveFolder();
+}
+
+async function downloadAndOpenOneDriveFolder() {
+    try {
+        const result = await prepareQuotePDF();
+        if (!result) return;
+        const { doc, filename } = result;
+
+        doc.save(filename);
+        const win = window.open(ONEDRIVE_FOLDER_URL, '_blank', 'noopener,noreferrer');
+        if (win) {
+            showToast(`📥 Downloaded ${filename} — drop it into the opened OneDrive folder`, 'success');
+        } else {
+            showToast(`📥 Downloaded ${filename} — allow popups or click the OneDrive link in ⚙️`, 'info');
+        }
+    } catch (err) {
+        console.error('Cloud download/open error:', err);
+        showToast('Failed to generate PDF for OneDrive upload', 'error');
+    }
 }
 
 // ===================== EXPORT, HISTORY & IMPORT =====================
