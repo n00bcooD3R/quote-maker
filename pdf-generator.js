@@ -163,65 +163,65 @@ function generateQuotePDF(data) {
     }
 
     // ================= DOCUMENT TITLE =================
-    setFont('bold', 14);
+    setFont('bold', 16);
     setColor(navy);
     doc.text('Quotation', pageWidth / 2, y, { align: 'center' });
-    y += 8;
+    y += 9;
 
     // Date & Ref No row
-    setFont('bold', 9.5);
+    setFont('bold', 11);
     setColor(black);
     doc.text(`Date: ${data.date || ''}`, margin, y);
     doc.text(`Ref. No: ${data.quotationNo || ''}`, pageWidth - margin, y, { align: 'right' });
-    y += 7;
+    y += 7.5;
 
     // Recipient Details ("To,")
-    setFont('bold', 9.5);
+    setFont('bold', 11);
     doc.text('To,', margin, y);
-    y += 5;
+    y += 5.5;
 
-    setFont('bold', 10);
+    setFont('bold', 11.5);
     doc.text(data.customerName || '', margin, y);
-    y += 5;
+    y += 5.5;
 
     if (data.customerAddress) {
-        setFont('normal', 9);
-        const splitAddr = doc.splitTextToSize(data.customerAddress, 120);
+        setFont('normal', 10.5);
+        const splitAddr = doc.splitTextToSize(data.customerAddress, 135);
         doc.text(splitAddr, margin, y);
-        y += (splitAddr.length * 4.5);
+        y += (splitAddr.length * 5.2);
     }
-    y += 3;
+    y += 3.5;
 
     // Kind Attention (if present)
     if (data.kindAttention) {
-        setFont('bold', 9.5);
+        setFont('bold', 11);
         setColor(navy);
         doc.text(`Kind Attention : ${data.kindAttention}`, margin, y);
-        y += 6;
+        y += 6.5;
     }
 
     // Subject
     if (data.subject) {
-        setFont('bold', 10);
+        setFont('bold', 11.5);
         setColor(black);
         const subjText = `Subject: ${data.subject}`;
         const splitSubj = doc.splitTextToSize(subjText, contentWidth);
         doc.text(splitSubj, margin, y);
-        y += (splitSubj.length * 5) + 3;
+        y += (splitSubj.length * 5.6) + 3.5;
     }
 
     // Salutation & Opening Letter
     if (data.salutation) {
-        setFont('normal', 9.5);
+        setFont('normal', 11);
         doc.text(data.salutation, margin, y);
-        y += 5;
+        y += 6;
     }
 
     if (data.openingText) {
-        setFont('normal', 9);
+        setFont('normal', 10.5);
         const splitOpen = doc.splitTextToSize(data.openingText, contentWidth);
         doc.text(splitOpen, margin, y);
-        y += (splitOpen.length * 4.5) + 6;
+        y += (splitOpen.length * 5.2) + 6.5;
     }
 
     // Technical Proposal (if project items exist or project mode)
@@ -231,29 +231,29 @@ function generateQuotePDF(data) {
     const hasMaterials = materialsItems.length > 0;
 
     if ((hasProject || data.mode === 'project') && data.technicalProposalText) {
-        checkPageBreak(25);
-        setFont('bold', 10.5);
+        checkPageBreak(28);
+        setFont('bold', 12);
         setColor(navy);
         doc.text('1. Technical Proposal', margin, y);
-        y += 6;
+        y += 6.5;
 
-        setFont('normal', 9);
+        setFont('normal', 10.5);
         setColor(black);
         const splitTech = doc.splitTextToSize(data.technicalProposalText, contentWidth);
         doc.text(splitTech, margin, y);
-        y += (splitTech.length * 4.5) + 8;
+        y += (splitTech.length * 5.2) + 8;
     }
 
     // ================= COSTING TABLES =================
     
     // 1. Render Project Items Table (if any exist)
     if (hasProject) {
-        checkPageBreak(30);
+        checkPageBreak(32);
 
-        setFont('bold', 10.5);
+        setFont('bold', 12);
         setColor(navy);
         doc.text('2. Costing & Project Scope Breakdown', margin, y);
-        y += 5;
+        y += 6;
 
         const projHead = [['SL No', 'Description / Scope', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']];
         const projRows = projectItems.map((item, idx) => {
@@ -268,22 +268,22 @@ function generateQuotePDF(data) {
         });
 
         const projColWidths = { 
-            0: { cellWidth: 16 }, 
+            0: { cellWidth: 17 }, 
             1: { cellWidth: 'auto' }, 
-            2: { cellWidth: 16, halign: 'center' }, 
-            3: { cellWidth: 32, halign: 'right' }, 
-            4: { cellWidth: 34, halign: 'right' } 
+            2: { cellWidth: 17, halign: 'center' }, 
+            3: { cellWidth: 35, halign: 'right' }, 
+            4: { cellWidth: 36, halign: 'right' } 
         };
 
         doc.autoTable({
             startY: y,
             head: projHead,
             body: projRows,
-            margin: { top: 39, left: margin, right: margin, bottom: 20 },
+            margin: { top: 39, left: margin, right: margin, bottom: 22 },
             styles: {
                 font: 'helvetica',
-                fontSize: 8.5,
-                cellPadding: 3,
+                fontSize: 10,
+                cellPadding: 3.5,
                 lineColor: [180, 180, 180],
                 lineWidth: 0.2
             },
@@ -291,6 +291,7 @@ function generateQuotePDF(data) {
                 fillColor: navy,
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
+                fontSize: 10,
                 halign: 'center'
             },
             columnStyles: projColWidths,
@@ -306,13 +307,13 @@ function generateQuotePDF(data) {
 
     // 2. Render Materials Items Table (if any exist)
     if (hasMaterials) {
-        checkPageBreak(30);
+        checkPageBreak(32);
 
-        setFont('bold', 10.5);
+        setFont('bold', 12);
         setColor(navy);
         const matTitle = hasProject ? 'Materials & Services Breakdown:' : (data.mode === 'project' ? '2. Costing Breakdown' : 'Costing & Materials Breakdown :');
         doc.text(matTitle, margin, y);
-        y += 5;
+        y += 6;
 
         const matHead = [['SL No', 'Part No', 'Description', 'Qty', 'Unit Price (₹)', 'Total Price (₹)']];
         const matRows = materialsItems.map((item, idx) => {
@@ -328,23 +329,23 @@ function generateQuotePDF(data) {
         });
 
         const matColWidths = { 
-            0: { cellWidth: 14 }, 
-            1: { cellWidth: 32 }, 
+            0: { cellWidth: 15 }, 
+            1: { cellWidth: 34 }, 
             2: { cellWidth: 'auto' }, 
-            3: { cellWidth: 14, halign: 'center' }, 
-            4: { cellWidth: 28, halign: 'right' }, 
-            5: { cellWidth: 32, halign: 'right' } 
+            3: { cellWidth: 15, halign: 'center' }, 
+            4: { cellWidth: 32, halign: 'right' }, 
+            5: { cellWidth: 34, halign: 'right' } 
         };
 
         doc.autoTable({
             startY: y,
             head: matHead,
             body: matRows,
-            margin: { top: 39, left: margin, right: margin, bottom: 20 },
+            margin: { top: 39, left: margin, right: margin, bottom: 22 },
             styles: {
                 font: 'helvetica',
-                fontSize: 8.5,
-                cellPadding: 3,
+                fontSize: 10,
+                cellPadding: 3.5,
                 lineColor: [180, 180, 180],
                 lineWidth: 0.2
             },
@@ -352,6 +353,7 @@ function generateQuotePDF(data) {
                 fillColor: navy,
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
+                fontSize: 10,
                 halign: 'center'
             },
             columnStyles: matColWidths,
@@ -362,7 +364,7 @@ function generateQuotePDF(data) {
             }
         });
 
-        y = doc.previousAutoTable.finalY + 6;
+        y = doc.previousAutoTable.finalY + 7;
     }
 
     // Subtotal & GST Calculation Breakdown across ALL items
@@ -378,50 +380,50 @@ function generateQuotePDF(data) {
         totalAmt = subtotal;
     }
 
-    checkPageBreak(25);
-    const sumX = pageWidth - margin - 80;
-    setFont('normal', 9);
+    checkPageBreak(28);
+    const sumX = pageWidth - margin - 88;
+    setFont('normal', 10.5);
     setColor(black);
     doc.text(`Subtotal Amount:`, sumX, y);
     doc.text(`₹ ${fmtMoney(subtotal)}`, pageWidth - margin, y, { align: 'right' });
-    y += 5;
+    y += 5.5;
 
     if (data.gstMode !== 'none') {
         doc.text(`GST (18%):`, sumX, y);
         doc.text(`₹ ${fmtMoney(gstAmt)}`, pageWidth - margin, y, { align: 'right' });
-        y += 5;
+        y += 5.5;
     }
 
-    setFont('bold', 10);
+    setFont('bold', 12);
     setColor(navy);
     doc.text(`Total Amount:`, sumX, y);
     doc.text(`₹ ${fmtMoney(totalAmt)}`, pageWidth - margin, y, { align: 'right' });
-    y += 8;
+    y += 9;
 
     // ================= COMPLIANCE & DEVIATION =================
     if ((hasProject || data.mode === 'project') && data.complianceText) {
-        checkPageBreak(25);
-        setFont('bold', 10.5);
+        checkPageBreak(28);
+        setFont('bold', 12);
         setColor(navy);
         doc.text('3. Compliance & Deviation', margin, y);
-        y += 6;
+        y += 6.5;
 
-        setFont('normal', 9);
+        setFont('normal', 10.5);
         setColor(black);
         const splitComp = doc.splitTextToSize(data.complianceText, contentWidth);
         doc.text(splitComp, margin, y);
-        y += (splitComp.length * 4.5) + 8;
+        y += (splitComp.length * 5.2) + 8;
     }
 
     // ================= COMMERCIAL TERMS & CONDITIONS =================
-    checkPageBreak(35);
-    setFont('bold', 10.5);
+    checkPageBreak(38);
+    setFont('bold', 12);
     setColor(navy);
     const termsHeading = data.mode === 'project' ? '4. COMMERCIAL TERMS & CONDITIONS' : 'Commercial Terms & Conditions:';
     doc.text(termsHeading, margin, y);
-    y += 6;
+    y += 6.5;
 
-    setFont('normal', 9);
+    setFont('normal', 10.5);
     setColor(black);
 
     const termsList = [];
@@ -433,77 +435,77 @@ function generateQuotePDF(data) {
     if (data.termsFreight) termsList.push(`6) FREIGHT / TRANSPORTATION: ${data.termsFreight}`);
 
     termsList.forEach(t => {
-        checkPageBreak(12);
+        checkPageBreak(14);
         const splitT = doc.splitTextToSize(t, contentWidth);
         doc.text(splitT, margin, y);
-        y += (splitT.length * 4.5) + 1.5;
+        y += (splitT.length * 5.2) + 2;
     });
 
     y += 4;
 
     // ================= BANK ACCOUNT DETAILS & PO ADDRESS =================
     if (data.bankName || data.bankAccount) {
-        checkPageBreak(35);
+        checkPageBreak(38);
         
         // Bank details box
         doc.setDrawColor(navy[0], navy[1], navy[2]);
         doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-        doc.rect(margin, y, contentWidth, 24, 'FD');
+        doc.rect(margin, y, contentWidth, 29, 'FD');
 
-        setFont('bold', 9.5);
+        setFont('bold', 11);
         setColor(navy);
-        doc.text('Account Details:', margin + 4, y + 5);
+        doc.text('Account Details:', margin + 4, y + 6);
 
-        setFont('normal', 8.5);
+        setFont('normal', 10);
         setColor(black);
-        doc.text(`Bank : ${data.bankName || ''}`, margin + 4, y + 10);
-        doc.text(`Branch : ${data.bankBranch || ''}`, margin + 4, y + 14);
-        doc.text(`Account Number : ${data.bankAccount || ''}`, margin + 4, y + 18);
-        doc.text(`RTGS/NEFT IFSC : ${data.bankIfsc || ''}`, margin + 4, y + 22);
+        doc.text(`Bank : ${data.bankName || ''}`, margin + 4, y + 11.5);
+        doc.text(`Branch : ${data.bankBranch || ''}`, margin + 4, y + 16.5);
+        doc.text(`Account Number : ${data.bankAccount || ''}`, margin + 4, y + 21.5);
+        doc.text(`RTGS/NEFT IFSC : ${data.bankIfsc || ''}`, margin + 4, y + 26.5);
 
-        y += 30;
+        y += 35;
     }
 
     // ================= SIGN-OFF & REGARDS =================
-    checkPageBreak(65);
+    checkPageBreak(72);
 
-    setFont('bold', 9.5);
+    setFont('bold', 11);
     setColor(black);
     doc.text('PO shall be address to:', margin, y);
-    y += 5;
+    y += 5.5;
 
-    setFont('bold', 9.5);
+    setFont('bold', 11);
     doc.text(data.signatoryCompany || 'SensoTech Design and Automation', margin, y);
-    y += 4.5;
-    setFont('normal', 9);
+    y += 5;
+    setFont('normal', 10.5);
     doc.text('No 20, Suprabath Nagar, Karihobanahalli, Thigalaraplya', margin, y);
-    y += 4.5;
+    y += 5;
     doc.text('Peenya Industrial Area', margin, y);
-    y += 4.5;
+    y += 5;
     doc.text('Bengaluru – 560058', margin, y);
-    y += 6;
+    y += 6.5;
 
     if (data.signatoryEmailGst) {
-        setFont('bold', 9.5);
+        setFont('bold', 11);
         setColor(navy);
         doc.text(data.signatoryEmailGst, margin, y);
-        y += 6;
+        y += 6.5;
     }
 
-    setFont('normal', 9);
+    setFont('normal', 10.5);
     setColor(black);
     doc.text('Thank You.', margin, y);
-    y += 6;
+    y += 6.5;
 
-    setFont('bold', 9.5);
+    setFont('bold', 11);
     doc.text('Best Regards,', margin, y);
-    y += 4.5;
+    y += 5;
     doc.text(data.signatoryName || 'Bapu Patil', margin, y);
-    y += 4.5;
+    y += 5;
     if (data.signatoryMobile) {
-        setFont('normal', 9);
+        setFont('normal', 10.5);
         doc.text(`Mob: ${data.signatoryMobile}`, margin, y);
-        y += 5;
+        y += 5.5;
     }
 
     // Official Seal Image
@@ -529,15 +531,16 @@ function generateQuotePDF(data) {
         // Footer line
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
-        doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+        doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
 
-        setFont('normal', 7);
+        setFont('normal', 8);
         setColor([100, 100, 100]);
         const footerText = 'SENSOTECH DESIGN AND AUTOMATION | 20, Suprabhat Nagar, Thigalarapalya, Peenya Industrial Area, Bangalore - 560058 | Tel: +91 8884676895 Email: sales@stda.in';
-        doc.text(footerText, margin, pageHeight - 9, { maxWidth: 148 });
+        doc.text(footerText, margin, pageHeight - 10.5, { maxWidth: 156 });
 
+        setFont('normal', 8.5);
         const pageStr = `Page ${i} of ${totalPages}`;
-        doc.text(pageStr, pageWidth - margin, pageHeight - 9, { align: 'right' });
+        doc.text(pageStr, pageWidth - margin, pageHeight - 10, { align: 'right' });
     }
 
     return doc;
